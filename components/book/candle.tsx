@@ -164,7 +164,7 @@ export function Candle({ position, color, showBody }: CandleProps) {
           <mesh geometry={assets.flamePlane} material={assets.flameMaterial} position={[0, 0.08, 0.01]} />
         </Billboard>
       </group>
-      <pointLight ref={light} position={[0, flameY + 0.1, 0]} color={color} intensity={34} distance={22} decay={2} />
+      <pointLight ref={light} position={[0, flameY + 0.1, 0]} color={color} intensity={34} decay={2} />
     </group>
   );
 }

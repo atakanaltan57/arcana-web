@@ -6,6 +6,8 @@ let context: AudioContext | null = null;
 let noiseBuffer: AudioBuffer | null = null;
 let enabled = true;
 let stopActiveDrone: (() => void) | null = null;
+let output: GainNode | null = null;
+let recordDestination: MediaStreamAudioDestinationNode | null = null;
 
 try {
   if (typeof window !== "undefined") {
@@ -46,6 +48,27 @@ function getContext() {
   }
 }
 
+function getOutput(ctx: AudioContext) {
+  if (!output) {
+    output = ctx.createGain();
+    output.connect(ctx.destination);
+    try {
+      recordDestination = ctx.createMediaStreamDestination();
+      output.connect(recordDestination);
+    } catch (error) {
+      console.error("Audio recording destination could not be created", error);
+    }
+  }
+  return output;
+}
+
+export function getSoundStream() {
+  const ctx = getContext();
+  if (!ctx) return null;
+  getOutput(ctx);
+  return recordDestination?.stream ?? null;
+}
+
 function getNoise(ctx: AudioContext) {
   if (!noiseBuffer) {
     noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -69,7 +92,7 @@ export function startDrone(duration: number) {
   filter.frequency.setValueAtTime(300, now);
   filter.frequency.exponentialRampToValueAtTime(1800, now + duration);
   filter.connect(master);
-  master.connect(ctx.destination);
+  master.connect(getOutput(ctx));
 
   const oscillators = [
     { type: "sine" as OscillatorType, freq: 73.42, gain: 0.7 },
@@ -124,7 +147,7 @@ export function playRustle(strength = 1) {
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22 + Math.random() * 0.1);
   source.connect(band);
   band.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getOutput(ctx));
   source.start(now, Math.random());
   source.stop(now + 0.4);
 }
@@ -146,7 +169,7 @@ export function playWhoosh() {
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
   source.connect(low);
   low.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getOutput(ctx));
   source.start(now);
   source.stop(now + 1.3);
 }
@@ -165,8 +188,53 @@ export function playChime() {
     gain.gain.exponentialRampToValueAtTime(0.06 / (index * 0.5 + 1), start + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + 3.2);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(getOutput(ctx));
     osc.start(start);
     osc.stop(start + 3.3);
   });
+}
+
+export function playCrackle(duration: number) {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const noise = getNoise(ctx);
+
+  const roar = ctx.createBufferSource();
+  roar.buffer = noise;
+  roar.loop = true;
+  const roarFilter = ctx.createBiquadFilter();
+  roarFilter.type = "lowpass";
+  roarFilter.frequency.value = 520;
+  const roarGain = ctx.createGain();
+  roarGain.gain.setValueAtTime(0.0001, now);
+  roarGain.gain.exponentialRampToValueAtTime(0.14, now + duration * 0.3);
+  roarGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  roar.connect(roarFilter);
+  roarFilter.connect(roarGain);
+  roarGain.connect(getOutput(ctx));
+  roar.start(now);
+  roar.stop(now + duration + 0.1);
+
+  const pops = Math.round(duration * 26);
+  for (let i = 0; i < pops; i++) {
+    const at = now + Math.random() * duration * 0.92;
+    const envelope = Math.sin((Math.PI * (at - now)) / duration);
+    const source = ctx.createBufferSource();
+    source.buffer = noise;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.frequency.value = 1200 + Math.random() * 4200;
+    band.Q.value = 1.4;
+    const gain = ctx.createGain();
+    const peak = (0.05 + Math.random() * 0.22) * Math.max(0.15, envelope);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(peak, at + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.02 + Math.random() * 0.05);
+    source.connect(band);
+    band.connect(gain);
+    gain.connect(getOutput(ctx));
+    source.start(at, Math.random() * 1.5);
+    source.stop(at + 0.09);
+  }
 }

@@ -7,6 +7,25 @@ import { classicTheme } from "@/lib/themes";
 import { CHARGE_SECONDS, ritualMotion, ritualStore } from "@/lib/ritual-store";
 import { isSoundEnabled, setSoundEnabled, startDrone, stopDrone } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
+import { BRAND_NAME } from "@/lib/brand";
+import {
+  cancelStoryRecording,
+  isStoryRecordingSupported,
+  startStoryRecording,
+  stopStoryRecording,
+  type StoryVideo,
+} from "@/lib/story-recorder";
+import { SHARE_CTA, type ShareTarget } from "@/lib/share";
+import { ShareIcon } from "@/components/share/share-icons";
+import { StorySheet } from "@/components/share/story-sheet";
+
+const SHARE_TARGETS: ShareTarget[] = ["instagram", "tiktok", "whatsapp"];
+
+type PreparedStory = {
+  video: StoryVideo | null;
+  target: ShareTarget;
+  answer: string;
+};
 
 const BookScene = dynamic(() => import("@/components/book/book-scene"), { ssr: false });
 
@@ -76,6 +95,11 @@ function SoundToggle() {
 
 export function Experience() {
   const [ready, setReady] = useState(false);
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
+  const [story, setStory] = useState<PreparedStory | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const answerRef = useRef("");
+  const previousPhase = useRef<string>("idle");
   const { phase, answer } = useSyncExternalStore(
     ritualStore.subscribe,
     ritualStore.getSnapshot,
@@ -83,23 +107,57 @@ export function Experience() {
   );
 
   const begin = useCallback(() => {
-    if (!ready) return;
+    if (!ready || story) return;
     if (ritualStore.begin()) {
       startDrone(CHARGE_SECONDS);
       vibrate([10, 90, 14, 70, 18, 50, 24, 30, 30]);
+      const canvas = stageRef.current?.querySelector("canvas");
+      if (canvas) startStoryRecording(canvas);
     }
-  }, [ready]);
+  }, [ready, story]);
+
+  useEffect(() => {
+    if (phase === "revealed" && answer) answerRef.current = answer.text;
+    const wasClosing = previousPhase.current === "closing";
+    previousPhase.current = phase;
+    if (!wasClosing || phase !== "idle") return;
+    if (!shareTarget) {
+      cancelStoryRecording();
+      return;
+    }
+    const target = shareTarget;
+    const answerText = answerRef.current;
+    setShareTarget(null);
+    stopStoryRecording()
+      .then((video) => setStory({ video, target, answer: answerText }))
+      .catch((error: unknown) => {
+        console.error("Story video could not be prepared", error);
+        setStory({ video: null, target, answer: answerText });
+      });
+  }, [phase, answer, shareTarget]);
+
+  const shareTo = (target: ShareTarget) => (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!isStoryRecordingSupported()) {
+      setStory({ video: null, target, answer: answerRef.current || answer?.text || "" });
+      return;
+    }
+    setShareTarget(target);
+    ritualStore.close();
+  };
+
+  const closeStory = useCallback(() => setStory(null), []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Enter" && event.key !== " ") return;
-      if (event.target instanceof HTMLButtonElement) return;
+      if (event.target instanceof HTMLButtonElement || story) return;
       event.preventDefault();
       begin();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [begin]);
+  }, [begin, story]);
 
   const askAgain = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -111,7 +169,7 @@ export function Experience() {
       className={`relative h-dvh w-full overflow-hidden bg-[#050608] ${phase === "idle" && ready ? "cursor-pointer" : ""}`}
       onPointerDown={begin}
     >
-      <div className="absolute inset-0">
+      <div ref={stageRef} className="absolute inset-0">
         <BookScene theme={classicTheme} onReady={() => setReady(true)} />
       </div>
 
@@ -133,7 +191,7 @@ export function Experience() {
         transition={{ duration: 1.2, ease: "easeOut" }}
       >
         <span className="size-10" aria-hidden />
-        <h1 className="text-[0.65rem] font-medium uppercase tracking-[0.55em] text-gold/75">Cevaplar Kitabı</h1>
+        <h1 className="text-[0.65rem] font-medium uppercase tracking-[0.55em] text-gold/75">{BRAND_NAME}</h1>
         <SoundToggle />
       </motion.header>
 
@@ -161,6 +219,21 @@ export function Experience() {
 
           {phase === "revealed" && (
             <motion.div key="revealed" {...fade} transition={{ duration: 0.8, delay: 0.1 }} className="flex flex-col items-center gap-4">
+              <p className="text-[0.62rem] uppercase tracking-[0.35em] text-parchment-dim/70">Hikaye olarak paylaş</p>
+              <div className="flex gap-3">
+                {SHARE_TARGETS.map((target) => (
+                  <button
+                    key={target}
+                    type="button"
+                    onClick={shareTo(target)}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    aria-label={SHARE_CTA[target]}
+                    className="pointer-events-auto grid size-12 place-items-center rounded-full border border-gold/35 bg-black/35 text-gold-bright/90 backdrop-blur-sm transition-colors hover:border-gold/70 hover:bg-gold/10"
+                  >
+                    <ShareIcon target={target} className="size-5" />
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={askAgain}
@@ -171,8 +244,18 @@ export function Experience() {
               </button>
             </motion.div>
           )}
+
+          {phase === "closing" && shareTarget && (
+            <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-xl italic text-gold-bright/85">
+              Hikayen hazırlanıyor…
+            </motion.p>
+          )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {story && <StorySheet key="story" video={story.video} target={story.target} answer={story.answer} onClose={closeStory} />}
+      </AnimatePresence>
 
       <p className="sr-only" aria-live="polite">
         {phase === "revealed" && answer ? `Kitabın cevabı: ${answer.text}` : ""}

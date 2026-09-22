@@ -12,6 +12,8 @@ import { ritualMotion } from "@/lib/ritual-store";
 import { BOOK_SIZE, BookModel } from "./book-model";
 import { Candle } from "./candle";
 import { DustParticles } from "./dust-particles";
+import { LightShaft } from "./light-shaft";
+import { CANDLE_POSITION, EFFECTS_LAYER } from "@/lib/scene-constants";
 
 const CLOSED_DIRECTION = new THREE.Vector3(0, 8.4, 6).normalize();
 const OPEN_DIRECTION = new THREE.Vector3(0, 0.94, 0.34).normalize();
@@ -32,6 +34,10 @@ function CameraRig() {
     }),
     [],
   );
+
+  useEffect(() => {
+    camera.layers.enable(EFFECTS_LAYER);
+  }, [camera]);
 
   const poses = useMemo(() => {
     const aspect = size.width / Math.max(size.height, 1);
@@ -77,7 +83,7 @@ function CameraRig() {
 function SceneCandle({ color }: { color: string }) {
   const size = useThree((state) => state.size);
   const wide = size.width / Math.max(size.height, 1) >= 1.2;
-  return <Candle position={[-5.1, 0, -2.9]} color={color} showBody={wide} />;
+  return <Candle position={CANDLE_POSITION} color={color} showBody={wide} />;
 }
 
 function GlintLight() {
@@ -88,9 +94,12 @@ function GlintLight() {
     const p = light.current.position;
     p.x = THREE.MathUtils.damp(p.x, 1.5 + state.pointer.x * 3, 3, delta);
     p.z = THREE.MathUtils.damp(p.z, 3.2 - state.pointer.y * 2, 3, delta);
+    ritualMotion.glint[0] = p.x;
+    ritualMotion.glint[1] = p.y;
+    ritualMotion.glint[2] = p.z;
   });
 
-  return <pointLight ref={light} position={[1.5, 3.4, 3.2]} color="#ffe2b8" intensity={4.5} distance={10} decay={2} />;
+  return <pointLight ref={light} position={[1.5, 3.4, 3.2]} color="#ffe2b8" intensity={4.5} decay={2} />;
 }
 
 function Table() {
@@ -106,7 +115,7 @@ function Table() {
         roughnessMap={wood.roughnessMap}
         roughness={1}
         metalness={0}
-        envMapIntensity={0.35}
+        envMapIntensity={0.1}
       />
     </mesh>
   );
@@ -124,7 +133,7 @@ export default function BookScene({ theme, onReady }: BookSceneProps) {
   return (
     <Canvas
       dpr={dpr}
-      gl={{ antialias: false, powerPreference: "high-performance" }}
+      gl={{ antialias: false, powerPreference: "high-performance", preserveDrawingBuffer: true }}
       camera={{ fov: 35, near: 0.1, far: 80, position: [0, 8.4, 6] }}
       onCreated={() => onReady()}
     >
@@ -156,7 +165,8 @@ export default function BookScene({ theme, onReady }: BookSceneProps) {
       <Table />
       <BookModel theme={theme} />
       <ContactShadows position={[0, 0.002, 0]} opacity={0.9} scale={14} blur={2.2} far={1.6} resolution={1024} color="#000000" />
-      <DustParticles color="#ffcf8a" />
+      <DustParticles />
+      <LightShaft />
 
       {effects && (
         <EffectComposer multisampling={4}>

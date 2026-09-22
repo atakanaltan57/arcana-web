@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
+import { BRAND_NAME } from "@/lib/brand";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -16,7 +17,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Cevaplar Kitabı",
+  title: BRAND_NAME,
   description: "Sorunu içinden geçir, parmağını kitaba koy. Kitap sana cevabını versin.",
 };
 

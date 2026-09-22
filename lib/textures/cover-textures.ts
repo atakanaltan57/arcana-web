@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
+import { traceBrandSymbol } from "./brand-symbol";
 import {
   alphaField,
   canvasToTexture,
@@ -109,46 +110,6 @@ function spiral(
   ctx.ellipse(radius * 1.05, -radius * 0.45, radius * 0.42, radius * 0.16, -0.6, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-}
-
-function spiralRing(
-  tool: Tool,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  count: number,
-  radius: number,
-  lineWidth: number,
-  phase: number,
-) {
-  for (let i = 0; i < count; i++) {
-    const angle = ((i + phase) / count) * Math.PI * 2;
-    const x = cx + Math.cos(angle) * rx;
-    const y = cy + Math.sin(angle) * ry;
-    const tangentX = -Math.sin(angle);
-    const tangentY = Math.cos(angle);
-    const gap = radius * 0.9;
-    spiral(tool.ctx, x + tangentX * gap, y + tangentY * gap, radius, angle - Math.PI / 2, 1, lineWidth);
-    spiral(tool.ctx, x - tangentX * gap, y - tangentY * gap, radius, angle - Math.PI / 2, -1, lineWidth);
-  }
-}
-
-function rosette(tool: Tool, cx: number, cy: number, radius: number, petals: number) {
-  const { ctx } = tool;
-  for (let i = 0; i < petals; i++) {
-    const angle = (i / petals) * Math.PI * 2;
-    ctx.save();
-    ctx.translate(cx + Math.cos(angle) * radius * 0.55, cy + Math.sin(angle) * radius * 0.55);
-    ctx.rotate(angle);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, radius * 0.5, radius * 0.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius * 0.2, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 function corner(tool: Tool, x: number, y: number, sx: number, sy: number) {
@@ -274,17 +235,16 @@ function drawGoldTooling(tool: Tool) {
   ctx.fill();
 
   tool.cut();
-  spiralRing(tool, cx, cy, rx * 0.6, ry * 0.64, 8, 19, 3, 0.5);
-  spiralRing(tool, cx, cy, rx * 0.36, ry * 0.4, 6, 13, 2.5, 0);
   ctx.lineWidth = 2.4;
   scallopedPath(ctx, cx, cy, rx * 0.78, ry * 0.81, 16, 0.05);
   ctx.stroke();
-
   ctx.beginPath();
-  ctx.ellipse(cx, cy, 46, 60, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy, rx * 0.68, ry * 0.7, 0, 0, Math.PI * 2);
   ctx.fill();
+
   tool.gold();
-  rosette(tool, cx, cy, 40, 8);
+  traceBrandSymbol(ctx, cx, cy, rx * 1.36, tool.cut);
+  tool.gold();
 
   pendant(tool, cx, cy - ry * 1.08, -1);
   pendant(tool, cx, cy + ry * 1.08, 1);
@@ -297,6 +257,36 @@ function drawBlindTooling(ctx: CanvasRenderingContext2D) {
   ctx.strokeRect(94, 94, WIDTH - 188, HEIGHT - 188);
   ctx.lineWidth = 1.2;
   ctx.strokeRect(102, 102, WIDTH - 204, HEIGHT - 204);
+}
+
+function drawScratches(ctx: CanvasRenderingContext2D, rand: () => number) {
+  ctx.lineCap = "round";
+  for (let i = 0; i < 70; i++) {
+    const x = rand() * WIDTH;
+    const y = rand() * HEIGHT;
+    const length = 30 + rand() * 180;
+    const angle = rand() * Math.PI * 2;
+    ctx.strokeStyle = `rgba(255,255,255,${0.25 + rand() * 0.6})`;
+    ctx.lineWidth = 0.6 + rand() * 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(
+      x + Math.cos(angle + 0.3) * length * 0.5,
+      y + Math.sin(angle + 0.3) * length * 0.5,
+      x + Math.cos(angle) * length,
+      y + Math.sin(angle) * length,
+    );
+    ctx.stroke();
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = WIDTH * (0.2 + rand() * 0.6);
+    const y = HEIGHT * (0.55 + rand() * 0.4);
+    const smudge = ctx.createRadialGradient(x, y, 0, x, y, 40 + rand() * 40);
+    smudge.addColorStop(0, "rgba(255,255,255,0.35)");
+    smudge.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = smudge;
+    ctx.fillRect(x - 90, y - 90, 180, 180);
+  }
 }
 
 function leatherFields(width: number, height: number, seed: number) {
@@ -327,6 +317,15 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
   const goldRaw = alphaField(goldCanvas.canvas);
   const goldSoft = alphaField(softenCanvas(goldCanvas.canvas, 5));
   const blindSoft = alphaField(softenCanvas(blindCanvas.canvas, 3));
+  const scratchCanvas = createCanvas(w, h);
+  drawScratches(scratchCanvas.ctx, rand);
+  const scratches = alphaField(scratchCanvas.canvas);
+  const corners = [
+    [0, 0],
+    [w, 0],
+    [0, h],
+    [w, h],
+  ];
 
   const cover = hexToRgb(theme.cover);
   const goldLight = hexToRgb(theme.goldLight);
@@ -351,6 +350,12 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
       const edge = Math.min(x, y, w - 1 - x, h - 1 - y);
       const edgeShade = 0.72 + 0.28 * Math.min(1, edge / 70);
       const scuff = edge < 26 && f > 0.62 ? 1.25 : 1;
+      let cornerDistance = Infinity;
+      for (const [cx, cy] of corners) {
+        cornerDistance = Math.min(cornerDistance, Math.hypot(x - cx, y - cy));
+      }
+      const cornerWear = Math.max(0, 1 - cornerDistance / (90 + f * 90)) * (0.6 + b * 0.6);
+      const scratch = scratches[i];
 
       const wear = Math.max(0, Math.min(1, (b - 0.7) * 4));
       const goldAlpha = goldRaw[i] * (1 - wear * 0.75) * (f < 0.1 ? 0.3 : 1);
@@ -359,10 +364,13 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
       const deboss = goldSoft[shadowIndex] * (1 - goldRaw[i]) * 0.5;
       const blind = blindSoft[i];
 
-      const leatherTone = (0.78 + b * 0.34) * (0.82 + g * 0.22) * edgeShade * scuff * (1 - deboss) * (1 - blind * 0.4);
-      const lr = cover[0] * leatherTone;
-      const lg = cover[1] * leatherTone;
-      const lb = cover[2] * leatherTone;
+      const leatherTone =
+        (0.78 + b * 0.34) * (0.82 + g * 0.22) * edgeShade * scuff * (1 - deboss) * (1 - blind * 0.4) *
+        (1 + cornerWear * 0.45 + scratch * 0.12);
+      const worn = Math.min(1, cornerWear * 0.8);
+      const lr = cover[0] * leatherTone * (1 + worn * 0.25);
+      const lg = cover[1] * leatherTone * (1 + worn * 0.5);
+      const lb = cover[2] * leatherTone * (1 + worn * 0.45);
 
       const goldMix = Math.min(1, Math.max(0, 0.25 + f * 0.55 + (x + y) / (w + h) * 0.3 - wear * 0.3));
       const gr = goldDeep[0] + (goldLight[0] - goldDeep[0]) * goldMix;
@@ -374,7 +382,7 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
       colorImage.data[p + 2] = lb + (gb - lb) * goldAlpha;
       colorImage.data[p + 3] = 255;
 
-      const leatherRough = 0.52 + g * 0.18 + b * 0.12;
+      const leatherRough = Math.min(1, 0.5 + g * 0.18 + b * 0.12 + cornerWear * 0.3 + scratch * 0.2);
       const goldRough = 0.24 + f * 0.2 + wear * 0.2;
       surfaceImage.data[p] = 0;
       surfaceImage.data[p + 1] = (leatherRough + (goldRough - leatherRough) * goldAlpha) * 255;
@@ -382,11 +390,13 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
       surfaceImage.data[p + 3] = 255;
 
       glowImage.data[p] = goldAlpha * 255;
-      glowImage.data[p + 1] = goldAlpha * 255;
+      const dxc = (x - w / 2) / (w / 2);
+      const dyc = (y - h / 2) / (h / 2);
+      glowImage.data[p + 1] = Math.min(1, Math.sqrt(dxc * dxc + dyc * dyc) / Math.SQRT2) * 255;
       glowImage.data[p + 2] = goldAlpha * 255;
       glowImage.data[p + 3] = 255;
 
-      const leatherHeight = g * 0.55 + b * 0.35;
+      const leatherHeight = g * 0.55 * (1 - cornerWear * 0.7) + b * 0.35 - scratch * 0.25;
       heightField[i] = leatherHeight * (1 - goldSoft[i]) - goldSoft[i] * 0.9 - blind * 0.8;
     }
   }
@@ -443,6 +453,93 @@ export function createLeatherTextures(theme: BookTheme): LeatherTextures {
     dispose: () => {
       map.dispose();
       normalMap.dispose();
+    },
+  };
+}
+
+export type SpineTextures = {
+  map: THREE.CanvasTexture;
+  surface: THREE.CanvasTexture;
+  dispose: () => void;
+};
+
+export function createSpineTextures(theme: BookTheme, title: string): SpineTextures {
+  const w = 256;
+  const h = 2048;
+  const { grain, blotch } = leatherFields(w, h, 29);
+  const cover = hexToRgb(theme.cover);
+
+  const goldCanvas = createCanvas(w, h);
+  const g = goldCanvas.ctx;
+  g.fillStyle = "#fff";
+  for (const band of [0.08, 0.115, 0.885, 0.92]) {
+    g.fillRect(0, h * band - 5, w, 10);
+  }
+  g.fillRect(0, h * 0.2 - 2, w, 3);
+  g.fillRect(0, h * 0.8 - 2, w, 3);
+  g.save();
+  g.translate(w / 2, h / 2);
+  g.rotate(-Math.PI / 2);
+  g.scale(1.95, 1);
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.font = "600 58px Georgia, 'Times New Roman', serif";
+  g.letterSpacing = "6px";
+  g.fillText(title, 0, 0);
+  g.restore();
+  const star = (y: number) => {
+    g.save();
+    g.translate(w / 2, y);
+    g.scale(1, 1.95);
+    g.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const r = i % 2 === 0 ? 20 : 7;
+      const a = (i / 8) * Math.PI * 2;
+      g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    g.closePath();
+    g.fill();
+    g.restore();
+  };
+  star(h * 0.16);
+  star(h * 0.84);
+  const gold = alphaField(goldCanvas.canvas);
+
+  const goldLight = hexToRgb(theme.goldLight);
+  const goldDeep = hexToRgb(theme.goldDeep);
+  const color = createCanvas(w, h);
+  const surface = createCanvas(w, h);
+  const colorImage = color.ctx.createImageData(w, h);
+  const surfaceImage = surface.ctx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) {
+    const x = i % w;
+    const curve = Math.sin((x / w) * Math.PI);
+    const tone = (0.72 + blotch[i] * 0.3) * (0.82 + grain[i] * 0.22) * (0.75 + curve * 0.25);
+    const a = gold[i] * (blotch[i] > 0.78 ? 0.55 : 1);
+    const mix = 0.3 + blotch[i] * 0.6;
+    const gr = goldDeep[0] + (goldLight[0] - goldDeep[0]) * mix;
+    const gg = goldDeep[1] + (goldLight[1] - goldDeep[1]) * mix;
+    const gb = goldDeep[2] + (goldLight[2] - goldDeep[2]) * mix;
+    const p = i * 4;
+    colorImage.data[p] = cover[0] * tone * (1 - a) + gr * a;
+    colorImage.data[p + 1] = cover[1] * tone * (1 - a) + gg * a;
+    colorImage.data[p + 2] = cover[2] * tone * (1 - a) + gb * a;
+    colorImage.data[p + 3] = 255;
+    surfaceImage.data[p] = 0;
+    surfaceImage.data[p + 1] = (0.6 + grain[i] * 0.2) * (1 - a) * 255 + 0.3 * a * 255;
+    surfaceImage.data[p + 2] = a * 255;
+    surfaceImage.data[p + 3] = 255;
+  }
+  color.ctx.putImageData(colorImage, 0, 0);
+  surface.ctx.putImageData(surfaceImage, 0, 0);
+  const map = canvasToTexture(color.canvas, true);
+  const surfaceTexture = canvasToTexture(surface.canvas, false);
+  return {
+    map,
+    surface: surfaceTexture,
+    dispose: () => {
+      map.dispose();
+      surfaceTexture.dispose();
     },
   };
 }

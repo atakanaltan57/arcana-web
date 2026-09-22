@@ -9,7 +9,7 @@ export type RitualSnapshot = {
 
 export const CHARGE_SECONDS = 1.9;
 export const OPENING_SECONDS = 5.2;
-export const CLOSING_SECONDS = 1.3;
+export const CLOSING_SECONDS = 5.9;
 
 export const ritualMotion = {
   charge: 0,
@@ -18,6 +18,13 @@ export const ritualMotion = {
   hover: 0,
   attract: 0,
   burst: 0,
+  burnClock: -1,
+  burnOriginU: 0.9,
+  burnOriginV: 0.08,
+  burnId: 0,
+  ignite: 1.2,
+  flash: 0,
+  glint: [1.5, 3.4, 3.2] as [number, number, number],
 };
 
 let snapshot: RitualSnapshot = { phase: "idle", answer: null };

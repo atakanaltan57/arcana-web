@@ -5,20 +5,26 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { BookTheme } from "@/lib/themes";
-import { createCoverTextures, createLeatherTextures } from "@/lib/textures/cover-textures";
+import { createCoverTextures, createLeatherTextures, createSpineTextures } from "@/lib/textures/cover-textures";
+import { BRAND_NAME_UPPER } from "@/lib/brand";
 import {
   createAnswerTexture,
   createBlankTextTexture,
   createEpigraphTexture,
   createPageEdgeTexture,
+  createPaperNormalTexture,
   createPaperTexture,
   createPrintedPageTexture,
 } from "@/lib/textures/page-textures";
 import { CHARGE_SECONDS, CLOSING_SECONDS, OPENING_SECONDS, ritualMotion, ritualStore } from "@/lib/ritual-store";
 import type { PickedAnswer } from "@/lib/answers/pick-answer";
 import { clamp01, easeInOutCubic, easeOutCubic } from "@/lib/easing";
-import { playChime, playRustle, playWhoosh, stopDrone } from "@/lib/sound";
+import { playChime, playCrackle, playRustle, playWhoosh, stopDrone } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
+import { BURN_DURATION, BURN_IGNITION, EmberParticles } from "./ember-particles";
+import { enhanceCoverMaterial } from "./cover-material";
+import { Starburst } from "./starburst";
+import { FLAME_POSITION } from "@/lib/scene-constants";
 import { createFlipPageMaterial, createInkPageMaterial, type FlipPageUniforms } from "./page-materials";
 
 export const BOOK_SIZE = {
@@ -32,6 +38,8 @@ export const BOOK_SIZE = {
 const FLIP_PAGE_COUNT = 7;
 const INK_START = 2.55;
 const INK_DURATION = 2.3;
+const CLOSE_START = BURN_IGNITION + BURN_DURATION + 0.1;
+const REDUCED_CLOSING_SECONDS = 1.3;
 
 const { width, depth, coverThickness, pagesThickness, overhang } = BOOK_SIZE;
 const coverWidth = width + overhang;
@@ -60,24 +68,54 @@ export function BookModel({ theme }: BookModelProps) {
   const lastAnswer = useRef<PickedAnswer | null>(null);
   const rustled = useRef<boolean[]>([]);
   const chimed = useRef(false);
+  const burning = useRef(false);
+  const closeRustled = useRef(false);
+  const fireLight = useRef<THREE.PointLight>(null);
+  const reducedMotion = useRef(false);
+
+  useEffect(() => {
+    try {
+      const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+      reducedMotion.current = query.matches;
+      const onChange = (event: MediaQueryListEvent) => {
+        reducedMotion.current = event.matches;
+      };
+      query.addEventListener("change", onChange);
+      return () => query.removeEventListener("change", onChange);
+    } catch (error) {
+      console.error("Reduced motion preference could not be read", error);
+    }
+  }, []);
 
   const assets = useMemo(() => {
     const cover = createCoverTextures(theme);
     const leather = createLeatherTextures(theme);
+    const spineTextures = createSpineTextures(theme, BRAND_NAME_UPPER);
     const paper = createPaperTexture(3);
     const paperLeft = createPaperTexture(9);
     const edge = createPageEdgeTexture();
     const blank = createBlankTextTexture();
     const printed = [createPrintedPageTexture(101), createPrintedPageTexture(202), createPrintedPageTexture(303)];
+    const paperNormal = createPaperNormalTexture();
 
-    const leatherMaterial = new THREE.MeshStandardMaterial({
+    const leatherMaterial = new THREE.MeshPhysicalMaterial({
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.45,
+      sheen: 0.25,
+      sheenRoughness: 0.6,
+      sheenColor: new THREE.Color("#8a4a3a"),
       map: leather.map,
       normalMap: leather.normalMap,
       normalScale: new THREE.Vector2(0.8, 0.8),
       roughness: 0.62,
       metalness: 0,
     });
-    const coverTop = new THREE.MeshStandardMaterial({
+    const coverTop = new THREE.MeshPhysicalMaterial({
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.45,
+      sheen: 0.25,
+      sheenRoughness: 0.6,
+      sheenColor: new THREE.Color("#8a4a3a"),
       map: cover.map,
       normalMap: cover.normalMap,
       normalScale: new THREE.Vector2(1.1, 1.1),
@@ -90,20 +128,37 @@ export function BookModel({ theme }: BookModelProps) {
       emissiveIntensity: 0,
       envMapIntensity: 0.85,
     });
+    const coverUniforms = enhanceCoverMaterial(coverTop, FLAME_POSITION);
     const edgeMaterial = new THREE.MeshStandardMaterial({ map: edge, roughness: 0.9 });
     const hiddenPaper = new THREE.MeshStandardMaterial({ color: "#d9c9a6", roughness: 0.95 });
+    const underPage = new THREE.MeshStandardMaterial({ map: printed[1], roughness: 0.93 });
 
-    const rightPage = createInkPageMaterial(paper, blank, 0);
-    const leftPage = createInkPageMaterial(paperLeft, blank, 1);
+    const rightPage = createInkPageMaterial(paper, blank, 0, { normalMap: paperNormal, back: printed[2] });
+    const leftPage = createInkPageMaterial(paperLeft, blank, 1, { normalMap: paperNormal, back: printed[0] });
     leftPage.uniforms.uProgress.value = 1;
 
     const flips = Array.from({ length: FLIP_PAGE_COUNT }, (_, index) =>
-      createFlipPageMaterial(printed[index % printed.length]),
+      createFlipPageMaterial(printed[index % printed.length], paperNormal),
     );
 
     const coverGeometry = new RoundedBoxGeometry(coverWidth, coverThickness, coverDepth, 3, 0.022);
-    const pagesGeometry = new THREE.BoxGeometry(width, halfPages, depth);
-    const rightPageGeometry = new THREE.PlaneGeometry(width, depth).rotateX(-Math.PI / 2);
+    const pagesGeometry = new THREE.BoxGeometry(width, halfPages, depth, 1, 4, 48);
+    const pagePositions = pagesGeometry.attributes.position;
+    for (let i = 0; i < pagePositions.count; i++) {
+      if (pagePositions.getX(i) > width / 2 - 1e-4) {
+        const z = pagePositions.getZ(i);
+        pagePositions.setX(i, pagePositions.getX(i) + 0.007 * Math.sin(z * 9) + 0.004 * Math.sin(z * 23 + 1.3));
+      }
+    }
+    pagesGeometry.computeVertexNormals();
+    const rightPageGeometry = new THREE.PlaneGeometry(width, depth, 40, 1).rotateX(-Math.PI / 2);
+    const rightPositions = rightPageGeometry.attributes.position;
+    for (let i = 0; i < rightPositions.count; i++) {
+      const u = (rightPositions.getX(i) + width / 2) / width;
+      const lift = 0.028 * Math.pow(Math.sin(Math.PI * u), 0.8) * Math.min(1, u / 0.12);
+      rightPositions.setY(i, rightPositions.getY(i) + lift);
+    }
+    rightPageGeometry.computeVertexNormals();
     const leftPageGeometry = new THREE.PlaneGeometry(width, depth).rotateX(Math.PI / 2);
     const leftUv = leftPageGeometry.attributes.uv;
     for (let i = 0; i < leftUv.count; i++) {
@@ -113,15 +168,27 @@ export function BookModel({ theme }: BookModelProps) {
       .rotateX(-Math.PI / 2)
       .translate(pageInset + width / 2, 0, 0);
     const spineGeometry = new THREE.CylinderGeometry(axisY, axisY, coverDepth, 32, 1, true, Math.PI, Math.PI);
-    const spineLeather = leatherMaterial.clone();
-    spineLeather.side = THREE.DoubleSide;
+    const spineLeather = new THREE.MeshPhysicalMaterial({
+      map: spineTextures.map,
+      roughnessMap: spineTextures.surface,
+      metalnessMap: spineTextures.surface,
+      normalMap: leather.normalMap,
+      normalScale: new THREE.Vector2(0.6, 0.6),
+      roughness: 1,
+      metalness: 1,
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.45,
+      envMapIntensity: 0.85,
+      side: THREE.DoubleSide,
+    });
 
     return {
       leatherMaterial,
       spineLeather,
       coverFaces: [leatherMaterial, leatherMaterial, coverTop, leatherMaterial, leatherMaterial, leatherMaterial],
-      pageFaces: [edgeMaterial, hiddenPaper, hiddenPaper, hiddenPaper, edgeMaterial, edgeMaterial],
+      pageFaces: [edgeMaterial, hiddenPaper, underPage, hiddenPaper, edgeMaterial, edgeMaterial],
       coverTop,
+      coverUniforms,
       rightPage,
       leftPage,
       flips,
@@ -129,8 +196,9 @@ export function BookModel({ theme }: BookModelProps) {
       dispose: () => {
         cover.dispose();
         leather.dispose();
-        [paper, paperLeft, edge, blank, ...printed].forEach((texture) => texture.dispose());
-        [leatherMaterial, spineLeather, coverTop, edgeMaterial, hiddenPaper, rightPage.material, leftPage.material].forEach(
+        spineTextures.dispose();
+        [paper, paperLeft, paperNormal, edge, blank, ...printed].forEach((texture) => texture.dispose());
+        [leatherMaterial, spineLeather, coverTop, edgeMaterial, hiddenPaper, underPage, rightPage.material, leftPage.material].forEach(
           (material) => material.dispose(),
         );
         flips.forEach((flip) => flip.material.dispose());
@@ -190,6 +258,14 @@ export function BookModel({ theme }: BookModelProps) {
     let glow = 0;
     let open = 0;
     let tremble = 0;
+    let fire = 0;
+    assets.rightPage.uniforms.uTime.value = state.clock.elapsedTime;
+    const cover = assets.coverUniforms;
+    cover.uTime.value = state.clock.elapsedTime;
+    cover.uGlint.value.set(motion.glint[0], motion.glint[1], motion.glint[2]);
+    let ignite = 1.2;
+    let sparkle = 5 + motion.hover * 3;
+    motion.flash = Math.max(0, motion.flash - delta * 2.2);
 
     if (phase === "idle") {
       motion.charge = Math.max(0, motion.charge - delta * 2);
@@ -197,6 +273,8 @@ export function BookModel({ theme }: BookModelProps) {
       motion.burst = Math.max(0, motion.burst - delta);
       glow = motion.hover * 0.12 + Math.sin(state.clock.elapsedTime * 1.3) * 0.02 + 0.02;
       assets.rightPage.uniforms.uProgress.value = 0;
+      assets.rightPage.uniforms.uBurn.value = 0;
+      motion.burnClock = -1;
       flipGroups.current.forEach((group) => {
         if (group) group.visible = false;
       });
@@ -205,13 +283,16 @@ export function BookModel({ theme }: BookModelProps) {
     if (phase === "charging") {
       motion.charge = Math.min(1, motion.charge + delta / CHARGE_SECONDS);
       motion.attract = motion.charge;
-      glow = Math.pow(motion.charge, 1.6) * 1.9 + Math.sin(state.clock.elapsedTime * 14) * 0.08 * motion.charge;
+      glow = 0.35 + motion.charge * 0.85 + Math.sin(state.clock.elapsedTime * 14) * 0.06 * motion.charge;
+      ignite = motion.charge * 1.15;
+      sparkle = 5 + motion.charge * 14;
       tremble = motion.charge * motion.charge;
       if (motion.charge >= 1) {
         stopDrone();
         playWhoosh();
         vibrate(35);
         ritualStore.open();
+        motion.flash = 1;
         rustled.current = [];
         chimed.current = false;
       }
@@ -225,7 +306,7 @@ export function BookModel({ theme }: BookModelProps) {
       }
       coverAngle = Math.PI * easeInOutCubic((t - 0.05) / 1.35);
       open = easeInOutCubic((t - 0.2) / 2.3);
-      glow = Math.max(0, 1.9 * (1 - t / 0.7));
+      glow = Math.max(0, 1.2 * (1 - t / 0.7));
       motion.attract = Math.max(0, 1 - t / 0.35);
       motion.burst = t < 0.05 ? 1 : Math.max(0, motion.burst - delta * 0.7);
 
@@ -259,22 +340,63 @@ export function BookModel({ theme }: BookModelProps) {
       assets.rightPage.uniforms.uProgress.value = 1;
     }
 
-    if (phase === "closing") {
-      const k = easeInOutCubic(t / 1.1);
-      coverAngle = Math.PI * (1 - k);
+    if (phase === "closing" && reducedMotion.current) {
+      coverAngle = Math.PI * (1 - easeInOutCubic(t / 1.1));
       open = 1 - easeInOutCubic(t / 1.2);
       assets.rightPage.uniforms.uProgress.value = Math.max(0, 1 - t / 0.5);
       flipGroups.current.forEach((group) => {
         if (group) group.visible = false;
       });
-      if (t > 0.1 && t - delta <= 0.1) playRustle(0.6);
+      if (t >= REDUCED_CLOSING_SECONDS) {
+        lastAnswer.current = null;
+        ritualStore.settle();
+      }
+    } else if (phase === "closing") {
+      const uniforms = assets.rightPage.uniforms;
+      if (!burning.current) {
+        burning.current = true;
+        closeRustled.current = false;
+        motion.burnOriginU = Math.random() < 0.5 ? 0.08 + Math.random() * 0.08 : 0.84 + Math.random() * 0.08;
+        motion.burnOriginV = 0.05 + Math.random() * 0.12;
+        motion.burnId += 1;
+        uniforms.uBurnOrigin.value.set(motion.burnOriginU, motion.burnOriginV);
+        playCrackle(BURN_DURATION + 0.3);
+        vibrate([8, 120, 8, 90, 10]);
+      }
+      motion.burnClock = t;
+      const burn = clamp01((t - BURN_IGNITION) / BURN_DURATION);
+      uniforms.uBurn.value = t > 0.02 ? Math.max(0.004, burn) : 0;
+      fire = Math.pow(Math.sin(Math.PI * Math.min(1, burn * 1.05)), 0.6) + (t < BURN_IGNITION + 0.3 ? 0.4 : 0);
+
+      const k = easeInOutCubic((t - CLOSE_START) / 1.2);
+      coverAngle = Math.PI * (1 - k);
+      open = 1 - easeInOutCubic((t - CLOSE_START + 0.1) / 1.3);
+      if (t >= CLOSE_START) {
+        flipGroups.current.forEach((group) => {
+          if (group) group.visible = false;
+        });
+        if (!closeRustled.current) {
+          closeRustled.current = true;
+          playRustle(0.6);
+        }
+      }
       if (t >= CLOSING_SECONDS) {
+        burning.current = false;
+        uniforms.uBurn.value = 0;
+        uniforms.uProgress.value = 0;
+        motion.burnClock = -1;
         lastAnswer.current = null;
         ritualStore.settle();
       }
     }
 
     motion.open = open;
+    if (fireLight.current) {
+      const flicker = 0.75 + 0.25 * Math.sin(state.clock.elapsedTime * 19) * Math.sin(state.clock.elapsedTime * 7.3);
+      fireLight.current.intensity = fire * 6 * flicker;
+    }
+    cover.uIgnite.value = ignite;
+    cover.uSparkle.value = THREE.MathUtils.damp(cover.uSparkle.value, sparkle, 6, delta);
     assets.coverTop.emissiveIntensity = THREE.MathUtils.damp(assets.coverTop.emissiveIntensity, glow, 10, delta);
 
     if (topHalf.current) topHalf.current.rotation.z = coverAngle;
@@ -341,6 +463,22 @@ export function BookModel({ theme }: BookModelProps) {
           rotation={[Math.PI / 2, 0, 0]}
         />
       </group>
+
+      <Starburst position={[0, totalThickness + 0.25, 0]} />
+      <pointLight
+        ref={fireLight}
+        position={[pagesCenterX, axisY + 0.7, 0.4]}
+        color="#ff7a2e"
+        intensity={0}
+        decay={2}
+      />
+      <EmberParticles
+        pageMinX={pagesCenterX - width / 2}
+        pageMaxX={pagesCenterX + width / 2}
+        pageNearZ={depth / 2}
+        pageFarZ={-depth / 2}
+        pageY={axisY}
+      />
 
       {assets.flips.map((flip, index) => (
         <group

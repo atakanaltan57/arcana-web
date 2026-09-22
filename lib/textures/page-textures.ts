@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import answers from "@/lib/answers/genel.json";
-import { canvasToTexture, createCanvas, seededRandom, smoothNoiseField } from "./procedural";
+import { BRAND_NAME_UPPER, BRAND_TAGLINE } from "@/lib/brand";
+import { traceBrandSymbol } from "./brand-symbol";
+import { canvasToTexture, createCanvas, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
 
 export const PAGE_TEXTURE_WIDTH = 1024;
 export const PAGE_TEXTURE_HEIGHT = 1434;
@@ -44,6 +46,21 @@ export function createPaperTexture(seed = 3) {
     ctx.fill();
   }
   return canvasToTexture(canvas, true);
+}
+
+export function createPaperNormalTexture() {
+  const size = 512;
+  const rand = seededRandom(77);
+  const fibers = smoothNoiseField(size, size, rand, [
+    { size: 2, weight: 1 },
+    { size: 6, weight: 0.6, stretchX: 5 },
+    { size: 40, weight: 0.5 },
+  ]);
+  const texture = canvasToTexture(heightToNormalCanvas(fibers, size, size, 1.4), false);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 3);
+  return texture;
 }
 
 export function createPageEdgeTexture() {
@@ -144,6 +161,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 
 const INK = "rgb(255,0,0)";
 const RUBRIC = "rgb(0,255,0)";
+const GOLD = "rgb(0,0,255)";
 
 function drawFleuron(ctx: CanvasRenderingContext2D, cx: number, cy: number, scale: number) {
   ctx.save();
@@ -178,10 +196,10 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  ctx.fillStyle = "rgba(255,0,0,0.55)";
-  ctx.font = `500 26px ${family}`;
-  ctx.letterSpacing = "8px";
-  ctx.fillText("CEVAPLAR KİTABI", w / 2, 118);
+  ctx.fillStyle = GOLD;
+  ctx.font = `600 38px ${family}`;
+  ctx.letterSpacing = "18px";
+  ctx.fillText(BRAND_NAME_UPPER, w / 2 + 8, 118);
   ctx.letterSpacing = "0px";
 
   let size = 92;
@@ -197,8 +215,9 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
   const blockHeight = lines.length * lineHeight;
   const top = h * 0.48 - blockHeight / 2;
 
-  ctx.fillStyle = RUBRIC;
-  drawFleuron(ctx, w / 2, top - 90, 1);
+  ctx.fillStyle = GOLD;
+  ctx.strokeStyle = GOLD;
+  traceBrandSymbol(ctx, w / 2, Math.max(260, top - 130), 150);
 
   ctx.fillStyle = INK;
   ctx.font = `italic 500 ${size}px ${family}`;
@@ -210,6 +229,10 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
   ctx.beginPath();
   ctx.arc(w / 2, top + blockHeight + 70, 5, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.fillStyle = "rgba(255,0,0,0.55)";
+  ctx.font = `italic 500 30px ${family}`;
+  ctx.fillText(BRAND_TAGLINE, w / 2, h - 190);
 
   ctx.fillStyle = "rgba(255,0,0,0.7)";
   ctx.font = `500 34px ${family}`;
@@ -234,8 +257,8 @@ export async function createEpigraphTexture() {
 
   ctx.fillStyle = "rgba(255,0,0,0.8)";
   ctx.font = `italic 500 50px ${family}`;
-  ctx.fillText("Her sorunun", w / 2, h * 0.45);
-  ctx.fillText("bir sayfası vardır.", w / 2, h * 0.45 + 62);
+  ctx.fillText("Bilinmezin sesi,", w / 2, h * 0.45);
+  ctx.fillText("sırrın mührü.", w / 2, h * 0.45 + 62);
 
   ctx.fillStyle = RUBRIC;
   drawFleuron(ctx, w / 2, h * 0.6, 0.55);
