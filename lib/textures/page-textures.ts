@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import answers from "@/lib/answers/genel.json";
-import { BRAND_NAME_UPPER, BRAND_TAGLINE } from "@/lib/brand";
+import { BRAND_NAME_UPPER } from "@/lib/brand";
 import { traceBrandSymbol } from "./brand-symbol";
 import { canvasToTexture, createCanvas, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
 
@@ -202,18 +202,18 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
   ctx.fillText(BRAND_NAME_UPPER, w / 2 + 8, 118);
   ctx.letterSpacing = "0px";
 
-  let size = 92;
+  let size = 88;
   let lines: string[] = [];
   do {
     ctx.font = `italic 500 ${size}px ${family}`;
     lines = wrapText(ctx, answer, 720);
     size -= 4;
-  } while (lines.length > 5 && size > 52);
+  } while (lines.length > 4 && size > 48);
   size += 4;
 
   const lineHeight = size * 1.22;
   const blockHeight = lines.length * lineHeight;
-  const top = h * 0.48 - blockHeight / 2;
+  const top = h * 0.42 - blockHeight / 2;
 
   ctx.fillStyle = GOLD;
   ctx.strokeStyle = GOLD;
@@ -229,10 +229,6 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
   ctx.beginPath();
   ctx.arc(w / 2, top + blockHeight + 70, 5, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.fillStyle = "rgba(255,0,0,0.55)";
-  ctx.font = `italic 500 30px ${family}`;
-  ctx.fillText(BRAND_TAGLINE, w / 2, h - 190);
 
   ctx.fillStyle = "rgba(255,0,0,0.7)";
   ctx.font = `500 34px ${family}`;

@@ -9,7 +9,7 @@ import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
 import { createWoodTextures } from "@/lib/textures/wood-texture";
 import { ritualMotion } from "@/lib/ritual-store";
-import { BOOK_SIZE, BookModel } from "./book-model";
+import { BOOK_SIZE, BookModel, RIGHT_PAGE } from "./book-model";
 import { Candle } from "./candle";
 import { DustParticles } from "./dust-particles";
 import { LightShaft } from "./light-shaft";
@@ -86,6 +86,49 @@ function SceneCandle({ color }: { color: string }) {
   return <Candle position={CANDLE_POSITION} color={color} showBody={wide} />;
 }
 
+function PageTracker() {
+  const camera = useThree((state) => state.camera);
+  const corners = useMemo(
+    () =>
+      [
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ].map(
+        ([sx, sz]) =>
+          new THREE.Vector3(RIGHT_PAGE.centerX + sx * RIGHT_PAGE.halfWidth, RIGHT_PAGE.y, sz * RIGHT_PAGE.halfDepth),
+      ),
+    [],
+  );
+  const projected = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    const rect = ritualMotion.pageRect;
+    rect.visible = ritualMotion.open > 0.98;
+    if (!rect.visible) return;
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const corner of corners) {
+      projected.copy(corner).project(camera);
+      const x = (projected.x + 1) / 2;
+      const y = (1 - projected.y) / 2;
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+    rect.left = left;
+    rect.right = right;
+    rect.top = top;
+    rect.bottom = bottom;
+  });
+
+  return null;
+}
+
 function GlintLight() {
   const light = useRef<THREE.PointLight>(null);
 
@@ -149,6 +192,7 @@ export default function BookScene({ theme, onReady }: BookSceneProps) {
       <color attach="background" args={["#050608"]} />
       <fog attach="fog" args={["#050608", 16, 34]} />
       <CameraRig />
+      <PageTracker />
 
       <ambientLight intensity={0.05} color="#8090c0" />
       <directionalLight position={[5, 6, 6]} intensity={0.18} color="#9fb0ff" />

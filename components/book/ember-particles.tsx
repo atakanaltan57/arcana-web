@@ -8,7 +8,7 @@ import { ritualMotion } from "@/lib/ritual-store";
 import { EFFECTS_LAYER } from "@/lib/scene-constants";
 
 export const BURN_IGNITION = 0.15;
-export const BURN_DURATION = 4.2;
+export const BURN_DURATION = 6;
 
 const EMBER_COUNT = 380;
 const ASH_COUNT = 170;

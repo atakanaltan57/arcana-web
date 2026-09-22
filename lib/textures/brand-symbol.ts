@@ -36,3 +36,12 @@ export function traceBrandSymbol(
   }
   ctx.restore();
 }
+
+export function traceBrandGem(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) {
+  const scale = size / BRAND_SYMBOL_VIEWBOX;
+  ctx.save();
+  ctx.translate(cx - size / 2, cy - size / 2);
+  ctx.scale(scale, scale);
+  ctx.fill(new Path2D(BRAND_SYMBOL_FILL_PATH));
+  ctx.restore();
+}

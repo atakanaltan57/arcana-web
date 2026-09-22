@@ -23,7 +23,7 @@ import { playChime, playCrackle, playRustle, playWhoosh, stopDrone } from "@/lib
 import { vibrate } from "@/lib/haptics";
 import { BURN_DURATION, BURN_IGNITION, EmberParticles } from "./ember-particles";
 import { enhanceCoverMaterial } from "./cover-material";
-import { Starburst } from "./starburst";
+import { GemGlint, Starburst } from "./starburst";
 import { FLAME_POSITION } from "@/lib/scene-constants";
 import { createFlipPageMaterial, createInkPageMaterial, type FlipPageUniforms } from "./page-materials";
 
@@ -36,8 +36,9 @@ export const BOOK_SIZE = {
 } as const;
 
 const FLIP_PAGE_COUNT = 7;
-const INK_START = 2.55;
-const INK_DURATION = 2.3;
+const INK_START = 4;
+const INK_DURATION = 3;
+const CLOSE_DURATION = 1.7;
 const CLOSE_START = BURN_IGNITION + BURN_DURATION + 0.1;
 const REDUCED_CLOSING_SECONDS = 1.3;
 
@@ -50,9 +51,16 @@ const axisY = totalThickness / 2;
 const spineX = -coverWidth / 2;
 const pageInset = 0.025;
 
+export const RIGHT_PAGE = {
+  centerX: spineX + pageInset + width / 2,
+  y: axisY,
+  halfWidth: width / 2,
+  halfDepth: depth / 2,
+} as const;
+
 function flipTiming(index: number) {
-  const start = 0.8 + index * 0.16;
-  const duration = 0.48 + Math.pow(index / (FLIP_PAGE_COUNT - 1), 2) * 0.75;
+  const start = 1.2 + index * 0.22;
+  const duration = 0.7 + Math.pow(index / (FLIP_PAGE_COUNT - 1), 2) * 1.05;
   return { start, duration };
 }
 
@@ -304,8 +312,8 @@ export function BookModel({ theme }: BookModelProps) {
         assets.rightPage.uniforms.uProgress.value = 0;
         loadAnswer(answer);
       }
-      coverAngle = Math.PI * easeInOutCubic((t - 0.05) / 1.35);
-      open = easeInOutCubic((t - 0.2) / 2.3);
+      coverAngle = Math.PI * easeInOutCubic((t - 0.05) / 2);
+      open = easeInOutCubic((t - 0.3) / 3.2);
       glow = Math.max(0, 1.2 * (1 - t / 0.7));
       motion.attract = Math.max(0, 1 - t / 0.35);
       motion.burst = t < 0.05 ? 1 : Math.max(0, motion.burst - delta * 0.7);
@@ -368,9 +376,9 @@ export function BookModel({ theme }: BookModelProps) {
       uniforms.uBurn.value = t > 0.02 ? Math.max(0.004, burn) : 0;
       fire = Math.pow(Math.sin(Math.PI * Math.min(1, burn * 1.05)), 0.6) + (t < BURN_IGNITION + 0.3 ? 0.4 : 0);
 
-      const k = easeInOutCubic((t - CLOSE_START) / 1.2);
+      const k = easeInOutCubic((t - CLOSE_START) / CLOSE_DURATION);
       coverAngle = Math.PI * (1 - k);
-      open = 1 - easeInOutCubic((t - CLOSE_START + 0.1) / 1.3);
+      open = 1 - easeInOutCubic((t - CLOSE_START + 0.1) / (CLOSE_DURATION + 0.1));
       if (t >= CLOSE_START) {
         flipGroups.current.forEach((group) => {
           if (group) group.visible = false;
@@ -396,6 +404,8 @@ export function BookModel({ theme }: BookModelProps) {
       fireLight.current.intensity = fire * 6 * flicker;
     }
     cover.uIgnite.value = ignite;
+    cover.uGem.value =
+      1.1 + 0.9 * Math.pow(0.5 + 0.5 * Math.sin(state.clock.elapsedTime * 1.3), 3) + motion.charge * 2.5 + motion.hover * 0.4;
     cover.uSparkle.value = THREE.MathUtils.damp(cover.uSparkle.value, sparkle, 6, delta);
     assets.coverTop.emissiveIntensity = THREE.MathUtils.damp(assets.coverTop.emissiveIntensity, glow, 10, delta);
 
@@ -465,6 +475,7 @@ export function BookModel({ theme }: BookModelProps) {
       </group>
 
       <Starburst position={[0, totalThickness + 0.25, 0]} />
+      <GemGlint position={[0, totalThickness + 0.03, 0.02]} />
       <pointLight
         ref={fireLight}
         position={[pagesCenterX, axisY + 0.7, 0.4]}

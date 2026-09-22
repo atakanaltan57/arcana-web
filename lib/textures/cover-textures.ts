@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
-import { traceBrandSymbol } from "./brand-symbol";
+import { traceBrandGem, traceBrandSymbol } from "./brand-symbol";
 import {
   alphaField,
   canvasToTexture,
@@ -13,6 +13,8 @@ import {
 } from "./procedural";
 
 const WIDTH = 1024;
+const MEDALLION_RX = 200;
+const SYMBOL_SCALE = 1.36;
 const HEIGHT = 1420;
 
 export type CoverTextures = {
@@ -221,7 +223,7 @@ function drawGoldTooling(tool: Tool) {
 
   const cx = w / 2;
   const cy = h / 2;
-  const rx = 200;
+  const rx = MEDALLION_RX;
   const ry = 318;
 
   tool.gold();
@@ -243,7 +245,7 @@ function drawGoldTooling(tool: Tool) {
   ctx.fill();
 
   tool.gold();
-  traceBrandSymbol(ctx, cx, cy, rx * 1.36, tool.cut);
+  traceBrandSymbol(ctx, cx, cy, rx * SYMBOL_SCALE, tool.cut);
   tool.gold();
 
   pendant(tool, cx, cy - ry * 1.08, -1);
@@ -315,6 +317,10 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
   drawBlindTooling(blindCanvas.ctx);
 
   const goldRaw = alphaField(goldCanvas.canvas);
+  const gemCanvas = createCanvas(w, h);
+  gemCanvas.ctx.fillStyle = "#fff";
+  traceBrandGem(gemCanvas.ctx, w / 2, h / 2, MEDALLION_RX * SYMBOL_SCALE);
+  const gem = alphaField(softenCanvas(gemCanvas.canvas, 1.5));
   const goldSoft = alphaField(softenCanvas(goldCanvas.canvas, 5));
   const blindSoft = alphaField(softenCanvas(blindCanvas.canvas, 3));
   const scratchCanvas = createCanvas(w, h);
@@ -377,15 +383,17 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
       const gg = goldDeep[1] + (goldLight[1] - goldDeep[1]) * goldMix;
       const gb = goldDeep[2] + (goldLight[2] - goldDeep[2]) * goldMix;
 
-      colorImage.data[p] = lr + (gr - lr) * goldAlpha;
-      colorImage.data[p + 1] = lg + (gg - lg) * goldAlpha;
-      colorImage.data[p + 2] = lb + (gb - lb) * goldAlpha;
+      const gemAlpha = gem[i];
+      const facet = x < w / 2 === y < h / 2 ? 1 : 0.78;
+      colorImage.data[p] = (lr + (gr - lr) * goldAlpha) * (1 - gemAlpha) + 255 * facet * gemAlpha;
+      colorImage.data[p + 1] = (lg + (gg - lg) * goldAlpha) * (1 - gemAlpha) + 240 * facet * gemAlpha;
+      colorImage.data[p + 2] = (lb + (gb - lb) * goldAlpha) * (1 - gemAlpha) + 205 * facet * gemAlpha;
       colorImage.data[p + 3] = 255;
 
       const leatherRough = Math.min(1, 0.5 + g * 0.18 + b * 0.12 + cornerWear * 0.3 + scratch * 0.2);
       const goldRough = 0.24 + f * 0.2 + wear * 0.2;
       surfaceImage.data[p] = 0;
-      surfaceImage.data[p + 1] = (leatherRough + (goldRough - leatherRough) * goldAlpha) * 255;
+      surfaceImage.data[p + 1] = (leatherRough + (goldRough - leatherRough) * goldAlpha) * (1 - gemAlpha * 0.8) * 255;
       surfaceImage.data[p + 2] = goldAlpha * 255;
       surfaceImage.data[p + 3] = 255;
 
@@ -393,7 +401,7 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
       const dxc = (x - w / 2) / (w / 2);
       const dyc = (y - h / 2) / (h / 2);
       glowImage.data[p + 1] = Math.min(1, Math.sqrt(dxc * dxc + dyc * dyc) / Math.SQRT2) * 255;
-      glowImage.data[p + 2] = goldAlpha * 255;
+      glowImage.data[p + 2] = gemAlpha * 255;
       glowImage.data[p + 3] = 255;
 
       const leatherHeight = g * 0.55 * (1 - cornerWear * 0.7) + b * 0.35 - scratch * 0.25;

@@ -7,9 +7,9 @@ export type RitualSnapshot = {
   answer: PickedAnswer | null;
 };
 
-export const CHARGE_SECONDS = 1.9;
-export const OPENING_SECONDS = 5.2;
-export const CLOSING_SECONDS = 5.9;
+export const CHARGE_SECONDS = 2.3;
+export const OPENING_SECONDS = 7.6;
+export const CLOSING_SECONDS = 8.3;
 
 export const ritualMotion = {
   charge: 0,
@@ -24,6 +24,7 @@ export const ritualMotion = {
   burnId: 0,
   ignite: 1.2,
   flash: 0,
+  pageRect: { left: 0, top: 0, right: 0, bottom: 0, visible: false },
   glint: [1.5, 3.4, 3.2] as [number, number, number],
 };
 

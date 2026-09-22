@@ -57,8 +57,8 @@ const vertexShader = /* glsl */ `
     float coc = clamp(abs(depth - uFocus) / uFocus, 0.0, 1.0);
     vBokeh = smoothstep(0.08, 0.4, coc);
 
-    float flash = pow(max(0.0, sin(uTime * (0.35 + aSeed * 0.9) + aSeed * 57.0)), 60.0) * 3.0;
-    float sharpLight = 0.1 + inBeam * (1.0 + flash) + nearFlame * 0.9 + uAttract * 1.4 + uBurst;
+    float flash = pow(max(0.0, sin(uTime * (0.35 + aSeed * 0.9) + aSeed * 57.0)), 28.0) * 3.5;
+    float sharpLight = 0.16 + inBeam * (1.0 + flash) + nearFlame * 0.9 + uAttract * 1.4 + uBurst;
     float bokehLight = (inBeam + nearFlame * 0.6) * 0.6;
     float light = mix(sharpLight, bokehLight, smoothstep(0.02, 0.14, coc));
     vHeat = clamp(nearFlame * 1.5 + uAttract, 0.0, 1.0);
@@ -90,7 +90,7 @@ type DustParticlesProps = {
   count?: number;
 };
 
-export function DustParticles({ count = 460 }: DustParticlesProps) {
+export function DustParticles({ count = 760 }: DustParticlesProps) {
   const dpr = useThree((state) => state.viewport.dpr);
   const camera = useThree((state) => state.camera);
 

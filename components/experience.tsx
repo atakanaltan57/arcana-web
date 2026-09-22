@@ -15,11 +15,9 @@ import {
   stopStoryRecording,
   type StoryVideo,
 } from "@/lib/story-recorder";
-import { SHARE_CTA, type ShareTarget } from "@/lib/share";
-import { ShareIcon } from "@/components/share/share-icons";
+import type { ShareTarget } from "@/lib/share";
 import { StorySheet } from "@/components/share/story-sheet";
-
-const SHARE_TARGETS: ShareTarget[] = ["instagram", "tiktok", "whatsapp"];
+import { PageActions } from "@/components/share/page-actions";
 
 type PreparedStory = {
   video: StoryVideo | null;
@@ -217,34 +215,6 @@ export function Experience() {
             </motion.div>
           )}
 
-          {phase === "revealed" && (
-            <motion.div key="revealed" {...fade} transition={{ duration: 0.8, delay: 0.1 }} className="flex flex-col items-center gap-4">
-              <p className="text-[0.62rem] uppercase tracking-[0.35em] text-parchment-dim/70">Hikaye olarak paylaş</p>
-              <div className="flex gap-3">
-                {SHARE_TARGETS.map((target) => (
-                  <button
-                    key={target}
-                    type="button"
-                    onClick={shareTo(target)}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    aria-label={SHARE_CTA[target]}
-                    className="pointer-events-auto grid size-12 place-items-center rounded-full border border-gold/35 bg-black/35 text-gold-bright/90 backdrop-blur-sm transition-colors hover:border-gold/70 hover:bg-gold/10"
-                  >
-                    <ShareIcon target={target} className="size-5" />
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={askAgain}
-                onPointerDown={(event) => event.stopPropagation()}
-                className="pointer-events-auto rounded-full border border-gold/35 bg-black/30 px-7 py-3 text-[0.72rem] uppercase tracking-[0.3em] text-gold-bright/90 backdrop-blur-sm transition-colors hover:border-gold/70 hover:bg-gold/10"
-              >
-                Yeni soru sor
-              </button>
-            </motion.div>
-          )}
-
           {phase === "closing" && shareTarget && (
             <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-xl italic text-gold-bright/85">
               Hikayen hazırlanıyor…
@@ -252,6 +222,10 @@ export function Experience() {
           )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {phase === "revealed" && <PageActions key="page-actions" onShare={shareTo} onAskAgain={askAgain} />}
+      </AnimatePresence>
 
       <AnimatePresence>
         {story && <StorySheet key="story" video={story.video} target={story.target} answer={story.answer} onClose={closeStory} />}
