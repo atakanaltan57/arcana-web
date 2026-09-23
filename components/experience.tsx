@@ -20,6 +20,8 @@ import type { ShareTarget } from "@/lib/share";
 import { StorySheet } from "@/components/share/story-sheet";
 import { PageActions } from "@/components/share/page-actions";
 import { PortalVeil } from "@/components/transition/portal-veil";
+import { ArcanaSeal } from "@/components/brand/arcana-seal";
+import { AwakeningVeil } from "@/components/brand/awakening-veil";
 
 type PreparedStory = {
   video: StoryVideo | null;
@@ -76,7 +78,7 @@ function SoundToggle() {
       onClick={toggle}
       onPointerDown={(event) => event.stopPropagation()}
       aria-label={on ? "Sesi kapat" : "Sesi aç"}
-      className="pointer-events-auto grid size-10 place-items-center rounded-full text-parchment-dim/70 transition-colors hover:text-gold"
+      className="focus-ring pointer-events-auto grid size-11 place-items-center rounded-full text-parchment/85 transition-colors hover:text-gold-bright"
     >
       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
         <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
@@ -195,16 +197,7 @@ export function Experience() {
         <BookScene theme={classicTheme} onReady={() => setReady(true)} />
       </div>
 
-      <AnimatePresence>
-        {!ready && (
-          <motion.div
-            key="veil"
-            className="absolute inset-0 z-20 bg-[#050608]"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 2, ease: "easeOut" } }}
-          />
-        )}
-      </AnimatePresence>
+      <AwakeningVeil visible={!ready} label="Kitap uyanıyor…" />
 
       <motion.header
         className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),1.25rem)] sm:px-8"
@@ -212,8 +205,11 @@ export function Experience() {
         animate={ready ? { opacity: phase === "opening" ? 0.3 : 1 } : undefined}
         transition={{ duration: 1.2, ease: "easeOut" }}
       >
-        <span className="size-10" aria-hidden />
-        <h1 className="text-[0.65rem] font-medium uppercase tracking-[0.55em] text-gold/75">{BRAND_NAME}</h1>
+        <span className="size-11" aria-hidden />
+        <h1 className="flex items-center gap-2.5 text-label font-medium uppercase text-gold-bright/90">
+          <ArcanaSeal className="size-5" />
+          {BRAND_NAME}
+        </h1>
         <SoundToggle />
       </motion.header>
 
@@ -221,26 +217,30 @@ export function Experience() {
         <AnimatePresence mode="wait">
           {ready && phase === "idle" && (
             <motion.div key="idle" {...fade} transition={{ duration: 0.9, ease: "easeOut" }} className="flex flex-col items-center gap-3">
-              <p className="font-serif text-[1.7rem] italic leading-snug text-parchment/95 sm:text-3xl">Sorunu içinden geçir…</p>
-              <motion.p
-                className="text-[0.7rem] uppercase tracking-[0.32em] text-parchment-dim/60"
-                animate={{ opacity: [0.45, 0.9, 0.45] }}
-                transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-              >
+              <p className="font-serif text-[1.8rem] italic leading-snug text-parchment [text-shadow:0_2px_16px_rgba(0,0,0,0.8)] sm:text-4xl">
+                Sorunu içinden geçir…
+              </p>
+              <p className="text-label uppercase text-parchment/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
                 ve kitaba dokun
-              </motion.p>
+                <span className="hidden normal-case tracking-normal text-parchment-dim/80 [@media(hover:hover)]:inline"> · ya da Enter&apos;a bas</span>
+              </p>
+              <motion.span
+                className="h-px w-16 bg-gradient-to-r from-transparent via-gold-bright to-transparent"
+                animate={{ opacity: [0.2, 1, 0.2], scaleX: [0.6, 1.4, 0.6] }}
+                transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+              />
             </motion.div>
           )}
 
           {phase === "charging" && (
             <motion.div key="charging" {...fade} transition={{ duration: 0.5 }} className="flex flex-col items-center gap-4">
-              <p className="font-serif text-2xl italic text-gold-bright/90">Kitap seni dinliyor…</p>
+              <p className="font-serif text-2xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">Kitap seni dinliyor…</p>
               <ChargeLine />
             </motion.div>
           )}
 
           {phase === "closing" && shareTarget && (
-            <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-xl italic text-gold-bright/85">
+            <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">
               Hikayen hazırlanıyor…
             </motion.p>
           )}
@@ -257,7 +257,7 @@ export function Experience() {
         {story && <StorySheet key="story" video={story.video} target={story.target} answer={story.answer} onClose={closeStory} />}
       </AnimatePresence>
 
-      <p className="sr-only" aria-live="polite">
+      <p className="sr-only select-text" aria-live="polite">
         {phase === "revealed" && answer ? `Kitabın cevabı: ${answer.text}` : ""}
       </p>
     </main>

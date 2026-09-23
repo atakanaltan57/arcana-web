@@ -3,12 +3,12 @@
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ritualMotion } from "@/lib/ritual-store";
-import { SHARE_CTA, type ShareTarget } from "@/lib/share";
+import { SHARE_CTA, SHARE_LABELS, type ShareTarget } from "@/lib/share";
 import { ShareIcon } from "./share-icons";
 
 const SHARE_TARGETS: ShareTarget[] = ["instagram", "tiktok", "whatsapp"];
-const REGION_TOP = 0.6;
-const REGION_HEIGHT = 0.25;
+const REGION_TOP = 0.58;
+const REGION_HEIGHT = 0.29;
 const REGION_WIDTH = 0.82;
 
 type PageActionsProps = {
@@ -56,10 +56,10 @@ export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
         exit={{ opacity: 0, filter: "blur(4px)" }}
         transition={{ duration: 1.1, ease: "easeOut" }}
       >
-        <div className="flex items-center gap-3 text-[#5b3a1a]/80">
-          <span className="h-px w-[clamp(18px,calc(var(--pw)*0.1),48px)] bg-current opacity-50" />
-          <span className="font-serif text-[clamp(14px,calc(var(--pw)*0.045),21px)] italic">Hikaye olarak paylaş</span>
-          <span className="h-px w-[clamp(18px,calc(var(--pw)*0.1),48px)] bg-current opacity-50" />
+        <div className="flex items-center gap-3 text-ink-page/90">
+          <span className="h-px w-[clamp(18px,calc(var(--pw)*0.1),48px)] bg-current opacity-60" />
+          <span className="font-serif text-[clamp(15px,calc(var(--pw)*0.048),22px)] font-medium italic">Bu anı story yap</span>
+          <span className="h-px w-[clamp(18px,calc(var(--pw)*0.1),48px)] bg-current opacity-60" />
         </div>
 
         <div className="flex gap-[clamp(12px,calc(var(--pw)*0.05),26px)]">
@@ -70,9 +70,14 @@ export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
               onClick={onShare(target)}
               onPointerDown={stopPointer}
               aria-label={SHARE_CTA[target]}
-              className="pointer-events-auto grid size-[clamp(46px,calc(var(--pw)*0.15),70px)] place-items-center rounded-full border-[1.5px] border-[#7a5426]/60 bg-[#f6e7c4]/25 text-[#4a2c12] shadow-[inset_0_1px_2px_rgba(80,50,20,0.25)] transition-all duration-300 hover:scale-105 hover:border-[#b8893a] hover:bg-[#d9b25e]/35 active:scale-95"
+              className="focus-ring group pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl"
             >
-              <ShareIcon target={target} className="size-[45%]" />
+              <span className="grid size-[clamp(48px,calc(var(--pw)*0.16),72px)] place-items-center rounded-full border-[1.5px] border-[#6b4520]/80 bg-[#f6e7c4]/30 text-[#3a220c] shadow-[inset_0_1px_2px_rgba(80,50,20,0.25),0_1px_0_rgba(255,245,220,0.5)] transition-all duration-300 group-hover:scale-105 group-hover:border-[#b8893a] group-hover:bg-[#d9b25e]/40 group-active:scale-95">
+                <ShareIcon target={target} className="size-[46%]" />
+              </span>
+              <span className="font-serif text-[clamp(12px,calc(var(--pw)*0.036),15px)] font-medium text-ink-page">
+                {SHARE_LABELS[target]}
+              </span>
             </button>
           ))}
         </div>
@@ -81,7 +86,7 @@ export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
           type="button"
           onClick={onAskAgain}
           onPointerDown={stopPointer}
-          className="pointer-events-auto rounded-full bg-gradient-to-b from-[#e8c983] via-[#c49b46] to-[#8d6726] px-[clamp(22px,calc(var(--pw)*0.09),40px)] py-[clamp(10px,calc(var(--pw)*0.03),15px)] font-serif text-[clamp(16px,calc(var(--pw)*0.05),23px)] font-semibold tracking-wide text-[#2a1806] shadow-[0_2px_10px_rgba(60,30,5,0.35),inset_0_1px_0_rgba(255,240,200,0.7)] transition-transform duration-300 hover:scale-[1.04] active:scale-95"
+          className="btn-gold focus-ring pointer-events-auto min-h-[clamp(44px,calc(var(--pw)*0.13),56px)]! px-[clamp(22px,calc(var(--pw)*0.09),40px)]! text-[clamp(16px,calc(var(--pw)*0.05),22px)]!"
         >
           Yeni soru sor
         </button>

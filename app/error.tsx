@@ -15,13 +15,13 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
   return (
     <main className="flex h-dvh flex-col items-center justify-center gap-6 bg-ink-deep px-6 text-center">
       <p className="font-serif text-3xl italic text-parchment">Kitap bu sefer açılmadı.</p>
-      <p className="max-w-sm text-sm text-parchment-dim">
+      <p className="max-w-sm text-base text-parchment/80">
         Bir şeyler ters gitti. Tekrar denersen sayfalar yeniden hışırdayacak.
       </p>
       <button
         type="button"
         onClick={reset}
-        className="rounded-full border border-gold/40 px-6 py-2.5 text-sm tracking-widest text-gold transition-colors hover:bg-gold/10"
+        className="btn-ghost focus-ring"
       >
         Tekrar dene
       </button>

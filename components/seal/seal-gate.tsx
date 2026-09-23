@@ -83,12 +83,35 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
           exit={{ opacity: 0, transition: { duration: 1.2 } }}
           transition={{ duration: 1.4, delay: 0.6 }}
         >
-          <header className="flex flex-col items-center px-5 pt-[max(env(safe-area-inset-top),1.5rem)] text-center">
-            <p className="text-[0.62rem] uppercase tracking-[0.55em] text-gold/70">Arcana</p>
-            <h1 className="mt-2 font-serif text-3xl text-parchment sm:text-4xl">Mühür Kapısı</h1>
-            <p className="mt-2 text-[0.68rem] uppercase tracking-[0.3em] text-gold/80">
-              {broken.length} / {SEAL_COUNT} mühür kırıldı
-            </p>
+          <header className="relative flex flex-col items-center px-5 pt-[max(env(safe-area-inset-top),1.25rem)] text-center">
+            <Link
+              href="/"
+              aria-label="Kitaba dön"
+              className="focus-ring pointer-events-auto absolute left-3 top-[max(env(safe-area-inset-top),0.75rem)] grid size-11 place-items-center rounded-full text-parchment/85 transition-colors hover:bg-white/5 hover:text-gold-bright"
+            >
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 5l-7 7 7 7" />
+              </svg>
+            </Link>
+            <p className="text-micro uppercase text-gold-bright/85">Arcana</p>
+            <h1 className="mt-1.5 font-serif text-3xl text-parchment [text-shadow:0_2px_14px_rgba(0,0,0,0.8)] sm:text-4xl">Mühür Kapısı</h1>
+            <div className="mt-2.5 flex items-center gap-3" role="img" aria-label={`${broken.length} / ${SEAL_COUNT} mühür kırıldı`}>
+              <div className="flex gap-2.5">
+                {Array.from({ length: SEAL_COUNT }, (_, index) => (
+                  <span
+                    key={index}
+                    className={`size-2 rotate-45 rounded-[1px] ${
+                      broken.includes(index)
+                        ? "bg-gold-bright shadow-[0_0_6px_rgba(236,208,138,0.8)]"
+                        : "bg-[#7a1420] ring-1 ring-[#b8303f]/50"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-label uppercase text-gold-bright/90">
+                {broken.length} / {SEAL_COUNT}
+              </p>
+            </div>
           </header>
 
           <div className="bg-gradient-to-t from-black/85 via-black/60 to-transparent px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-16">
@@ -110,23 +133,35 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
                 rows={2}
                 maxLength={400}
                 placeholder="Kadim satırlardan birini çözdüysen buraya yaz…"
-                className="w-full resize-none rounded-2xl border border-gold/25 bg-[#f1e4c5]/[0.07] px-5 py-3.5 font-serif text-lg text-parchment backdrop-blur-sm placeholder:italic placeholder:text-parchment-dim/55 focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/20"
+                aria-invalid={status.kind === "wrong"}
+                aria-describedby="seal-feedback"
+                className={`w-full resize-none rounded-2xl border bg-[#f1e4c5]/[0.08] px-5 py-3.5 font-serif text-lg text-parchment backdrop-blur-sm transition-colors duration-500 placeholder:italic placeholder:text-parchment-dim/75 focus:outline-none focus:ring-2 ${
+                  status.kind === "wrong"
+                    ? "border-[#e0705a]/80 focus:ring-[#e0705a]/25"
+                    : "border-gold/30 focus:border-gold/60 focus:ring-gold/20"
+                }`}
               />
               <button
                 type="submit"
                 disabled={status.kind === "checking" || text.trim().length === 0}
-                className="rounded-full bg-gradient-to-b from-[#e8c983] via-[#c49b46] to-[#8d6726] px-10 py-3 font-serif text-lg font-semibold tracking-wide text-[#2a1806] shadow-[0_2px_14px_rgba(60,30,5,0.45),inset_0_1px_0_rgba(255,240,200,0.7)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+                className="btn-gold focus-ring px-10!"
               >
                 {status.kind === "checking" ? "Mühre dokunuluyor…" : "Mührü kır"}
               </button>
             </motion.form>
 
-            <div className="pointer-events-auto mt-3 flex min-h-12 flex-col items-center gap-2 text-center" aria-live="polite">
+            <div id="seal-feedback" className="pointer-events-auto mt-3 flex min-h-12 flex-col items-center gap-2 text-center" aria-live="polite">
               {status.kind === "wrong" && (
-                <p className="font-serif text-lg italic text-[#e0917a]">Mürekkep henüz kurumadı. Satırı yeniden oku.</p>
+                <p className="flex items-center gap-2 font-serif text-lg italic text-[#f0a58f]">
+                  <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                    <path d="M12 3l9.5 17h-19z" />
+                    <path d="M12 10v4.5M12 17.5v.01" />
+                  </svg>
+                  Mürekkep henüz kurumadı. Satırı yeniden oku.
+                </p>
               )}
               {status.kind === "error" && (
-                <p className="text-sm text-[#e0917a]">Mühür şu an doğrulanamadı. Biraz sonra yeniden dene.</p>
+                <p className="text-sm text-[#f0a58f]">Mühür şu an doğrulanamadı. Biraz sonra yeniden dene.</p>
               )}
               {status.kind === "broken" && (
                 <>
@@ -138,23 +173,15 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
                   <button
                     type="button"
                     onClick={async () => setShareNote(await shareSeals(broken.length))}
-                    className="text-[0.68rem] uppercase tracking-[0.25em] text-gold-bright/85 underline-offset-4 hover:underline"
+                    className="btn-ghost focus-ring"
                   >
                     Kırdığın mühürleri paylaş
                   </button>
-                  {shareNote && <p className="text-xs text-parchment-dim">{shareNote}</p>}
+                  {shareNote && <p className="text-sm text-parchment/80">{shareNote}</p>}
                 </>
               )}
             </div>
 
-            <div className="mt-2 flex justify-center">
-              <Link
-                href="/"
-                className="pointer-events-auto text-[0.65rem] uppercase tracking-[0.35em] text-parchment-dim/60 transition-colors hover:text-gold"
-              >
-                Kitaba dön
-              </Link>
-            </div>
           </div>
         </motion.div>
       )}

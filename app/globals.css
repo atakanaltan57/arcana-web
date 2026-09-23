@@ -20,6 +20,11 @@
   --color-bordo: var(--bordo);
   --font-serif: var(--font-cormorant);
   --font-sans: var(--font-manrope);
+  --color-ink-page: #3e250d;
+  --text-micro: 0.75rem;
+  --text-micro--letter-spacing: 0.28em;
+  --text-label: 0.8125rem;
+  --text-label--letter-spacing: 0.22em;
 }
 
 html,
@@ -33,6 +38,65 @@ body {
 body {
   font-family: var(--font-manrope), system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+canvas,
+button,
+a {
   -webkit-user-select: none;
   user-select: none;
+}
+
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--gold-bright) 80%, transparent);
+    outline-offset: 3px;
+  }
+}
+
+@utility btn-gold {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border-radius: 9999px;
+  background-image: linear-gradient(to bottom, #e8c983, #c49b46 55%, #8d6726);
+  padding-inline: 2rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  color: #2a1806;
+  box-shadow: 0 2px 14px rgba(60, 30, 5, 0.4), inset 0 1px 0 rgba(255, 240, 200, 0.7);
+  transition: transform 300ms ease, opacity 300ms ease;
+  &:hover:not(:disabled) {
+    transform: scale(1.03);
+  }
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+@utility btn-ghost {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+  padding-inline: 1.25rem;
+  font-size: 0.875rem;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--gold-bright) 92%, transparent);
+  transition: background-color 300ms ease, border-color 300ms ease;
+  &:hover {
+    background-color: color-mix(in srgb, var(--gold) 12%, transparent);
+    border-color: color-mix(in srgb, var(--gold) 70%, transparent);
+  }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { StoryVideo } from "@/lib/story-recorder";
 import { SHARE_CTA, downloadStory, shareStory, type ShareOutcome, type ShareTarget } from "@/lib/share";
@@ -22,6 +22,13 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const primary = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    primary.current?.focus();
+    return () => previous?.focus();
+  }, []);
 
   useEffect(() => {
     if (!video) return;
@@ -71,7 +78,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
         transition={{ type: "spring", damping: 26, stiffness: 260 }}
         onClick={(event) => event.stopPropagation()}
       >
-        <p className="text-[0.65rem] uppercase tracking-[0.4em] text-gold/70">Hikayen hazır</p>
+        <p className="text-micro uppercase text-gold-bright/85">Hikayen hazır</p>
 
         {previewUrl ? (
           <video
@@ -83,14 +90,15 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
             playsInline
           />
         ) : (
-          <p className="px-4 text-center font-serif text-xl italic text-parchment/90">“{answer}”</p>
+          <p className="select-text px-4 text-center font-serif text-xl italic text-parchment/90">“{answer}”</p>
         )}
 
         <button
           type="button"
+          ref={primary}
           onClick={share}
           disabled={busy}
-          className="flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-b from-gold-bright to-gold px-6 py-3.5 text-sm font-semibold tracking-wide text-[#1a1206] transition-opacity disabled:opacity-60"
+          className="btn-gold focus-ring w-full"
         >
           <ShareIcon target={target} className="size-5" />
           {busy ? "Açılıyor…" : SHARE_CTA[target]}
@@ -101,7 +109,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
             <button
               type="button"
               onClick={() => downloadStory(video)}
-              className="flex-1 rounded-full border border-gold/30 px-4 py-3 text-xs uppercase tracking-[0.2em] text-gold-bright/85 transition-colors hover:bg-gold/10"
+              className="btn-ghost focus-ring min-h-12! flex-1"
             >
               İndir
             </button>
@@ -109,13 +117,13 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-full border border-parchment/15 px-4 py-3 text-xs uppercase tracking-[0.2em] text-parchment-dim transition-colors hover:bg-white/5"
+            className="btn-ghost focus-ring min-h-12! flex-1 border-parchment/25! text-parchment/85!"
           >
             Kapat
           </button>
         </div>
 
-        {message && <p className="text-center text-xs leading-relaxed text-parchment-dim">{message}</p>}
+        {message && <p className="text-center text-sm leading-relaxed text-parchment/80">{message}</p>}
       </motion.div>
     </motion.div>
   );

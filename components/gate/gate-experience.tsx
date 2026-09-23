@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SealGate, shareSeals } from "@/components/seal/seal-gate";
+import { AwakeningVeil } from "@/components/brand/awakening-veil";
 import { SEAL_COUNT, readBrokenSeals } from "@/lib/seals";
 import { playArrival, playDoorGrind, playSealCrack } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
@@ -34,6 +35,7 @@ export function GateExperience() {
   const [openAt, setOpenAt] = useState<number | null>(null);
   const [dimAt, setDimAt] = useState<number | null>(null);
   const [viaPortal, setViaPortal] = useState(false);
+  const [arrivalChecked, setArrivalChecked] = useState(false);
   const [finale, setFinale] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
@@ -42,6 +44,7 @@ export function GateExperience() {
     const saved = readBrokenSeals();
     setBroken(saved);
     setViaPortal(consumeArrival());
+    setArrivalChecked(true);
     if (saved.length >= SEAL_COUNT) {
       setOpenAt(performance.now() - DOOR_OPEN_MS * 3);
       setFinale(true);
@@ -95,7 +98,7 @@ export function GateExperience() {
             animate={{ opacity: 1 }}
             transition={{ duration: 2 }}
           >
-            <p className="text-[0.65rem] uppercase tracking-[0.55em] text-[#3a2508]/80">9 / 9 mühür</p>
+            <p className="text-label uppercase text-[#3a2508]/90">9 / 9 mühür</p>
             <h2 className="max-w-md font-serif text-4xl leading-tight text-[#2a1806] sm:text-5xl">
               Kadim Yazıcılar arasına katıldın
             </h2>
@@ -106,13 +109,13 @@ export function GateExperience() {
               <button
                 type="button"
                 onClick={async () => setShareNote(await shareSeals(SEAL_COUNT))}
-                className="rounded-full bg-[#2a1806] px-7 py-3 font-serif text-lg text-[#f3dc9a] shadow-lg transition-transform hover:scale-[1.03]"
+                className="focus-ring inline-flex min-h-12 items-center rounded-full bg-[#2a1806] px-7 font-serif text-lg text-[#f3dc9a] shadow-lg transition-transform hover:scale-[1.03]"
               >
                 Bunu paylaş
               </button>
               <Link
                 href="/"
-                className="rounded-full border border-[#2a1806]/40 px-7 py-3 font-serif text-lg text-[#2a1806] transition-colors hover:bg-[#2a1806]/10"
+                className="focus-ring inline-flex min-h-12 items-center rounded-full border border-[#2a1806]/50 px-7 font-serif text-lg text-[#2a1806] transition-colors hover:bg-[#2a1806]/10"
               >
                 Kitaba dön
               </Link>
@@ -122,8 +125,10 @@ export function GateExperience() {
         )}
       </AnimatePresence>
 
+      <AwakeningVeil visible={!ready && arrivalChecked && !viaPortal} label="Kapı beliriyor…" background="bg-[#040406]" />
+
       <AnimatePresence>
-        {(!ready || viaPortal) && (
+        {(viaPortal || !arrivalChecked) && (
           <motion.div
             key={viaPortal ? "portal-veil" : "dark-veil"}
             className={`pointer-events-none absolute inset-0 z-30 ${
