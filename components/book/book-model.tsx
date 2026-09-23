@@ -88,6 +88,142 @@ type BookModelProps = {
   theme: BookTheme;
 };
 
+type ThemeAssets = ReturnType<typeof createThemeAssets>;
+
+const themeCache = new Map<string, ThemeAssets>();
+
+export function getThemeAssets(theme: BookTheme) {
+  const cached = themeCache.get(theme.id);
+  if (cached) return cached;
+  const created = createThemeAssets(theme);
+  themeCache.set(theme.id, created);
+  return created;
+}
+
+function createPagesGeometry() {
+  const geometry = new THREE.BoxGeometry(width, halfPages, depth, 1, 4, 48);
+  const positions = geometry.attributes.position;
+  for (let i = 0; i < positions.count; i++) {
+    if (positions.getX(i) > width / 2 - 1e-4) {
+      const z = positions.getZ(i);
+      positions.setX(i, positions.getX(i) + 0.007 * Math.sin(z * 9) + 0.004 * Math.sin(z * 23 + 1.3));
+    }
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createCoverGeometry() {
+  return new RoundedBoxGeometry(coverWidth, coverThickness, coverDepth, 3, 0.022);
+}
+
+function createSpineGeometry() {
+  return new THREE.CylinderGeometry(axisY, axisY, coverDepth, 32, 1, true, Math.PI, Math.PI);
+}
+
+let closedShared: {
+  cover: THREE.BufferGeometry;
+  pages: THREE.BufferGeometry;
+  spine: THREE.BufferGeometry;
+  pageFaces: THREE.Material[];
+} | null = null;
+
+function getClosedShared() {
+  if (!closedShared) {
+    const edge = createPageEdgeTexture();
+    const edgeMaterial = new THREE.MeshStandardMaterial({ map: edge, bumpMap: edge, bumpScale: 1.5, metalness: 0.2, roughness: 0.55 });
+    const hidden = new THREE.MeshStandardMaterial({ color: "#d9c9a6", roughness: 0.95 });
+    closedShared = {
+      cover: createCoverGeometry(),
+      pages: createPagesGeometry(),
+      spine: createSpineGeometry(),
+      pageFaces: [edgeMaterial, hidden, hidden, hidden, edgeMaterial, edgeMaterial],
+    };
+  }
+  return closedShared;
+}
+
+const closedPagesCenterX = spineX + pageInset + width / 2;
+
+export function ClosedBook({ theme }: { theme: BookTheme }) {
+  const themed = useMemo(() => getThemeAssets(theme), [theme]);
+  const shared = useMemo(() => getClosedShared(), []);
+  return (
+    <group>
+      <mesh geometry={shared.cover} material={themed.leatherMaterial} position={[spineX + coverWidth / 2, coverThickness / 2, 0]} />
+      <mesh geometry={shared.pages} material={shared.pageFaces} position={[closedPagesCenterX, coverThickness + halfPages / 2, 0]} />
+      <group position={[spineX, axisY, 0]}>
+        <mesh geometry={shared.pages} material={shared.pageFaces} position={[pageInset + width / 2, halfPages / 2, 0]} />
+        <mesh geometry={shared.cover} material={themed.coverFaces} position={[coverWidth / 2, halfPages + coverThickness / 2, 0]} />
+        <mesh geometry={shared.spine} material={themed.spineLeather} rotation={[Math.PI / 2, 0, 0]} />
+      </group>
+    </group>
+  );
+}
+
+function createThemeAssets(theme: BookTheme) {
+  const cover = createCoverTextures(theme);
+  const leather = createLeatherTextures(theme);
+  const spineTextures = createSpineTextures(theme, BRAND_NAME_UPPER);
+  const leatherMaterial = new THREE.MeshPhysicalMaterial({
+    clearcoat: 0.1,
+    clearcoatRoughness: 0.45,
+    sheen: 0.25,
+    sheenRoughness: 0.6,
+    sheenColor: new THREE.Color("#8a4a3a"),
+    map: leather.map,
+    normalMap: leather.normalMap,
+    normalScale: new THREE.Vector2(0.8, 0.8),
+    roughness: 0.62,
+    metalness: 0,
+  });
+  const coverTop = new THREE.MeshPhysicalMaterial({
+    clearcoat: 0.1,
+    clearcoatRoughness: 0.45,
+    sheen: 0.25,
+    sheenRoughness: 0.6,
+    sheenColor: new THREE.Color("#8a4a3a"),
+    map: cover.map,
+    normalMap: cover.normalMap,
+    normalScale: new THREE.Vector2(1.1, 1.1),
+    roughnessMap: cover.surface,
+    metalnessMap: cover.surface,
+    roughness: 1,
+    metalness: 1,
+    emissive: new THREE.Color(theme.goldLight),
+    emissiveMap: cover.glow,
+    emissiveIntensity: 0,
+    envMapIntensity: 0.85,
+  });
+  const coverUniforms = enhanceCoverMaterial(coverTop, FLAME_POSITION);
+  const spineLeather = new THREE.MeshPhysicalMaterial({
+    map: spineTextures.map,
+    roughnessMap: spineTextures.surface,
+    metalnessMap: spineTextures.surface,
+    normalMap: leather.normalMap,
+    normalScale: new THREE.Vector2(0.6, 0.6),
+    roughness: 1,
+    metalness: 1,
+    clearcoat: 0.1,
+    clearcoatRoughness: 0.45,
+    envMapIntensity: 0.85,
+    side: THREE.DoubleSide,
+  });
+  return {
+    leatherMaterial,
+    spineLeather,
+    coverTop,
+    coverUniforms,
+    coverFaces: [leatherMaterial, leatherMaterial, coverTop, leatherMaterial, leatherMaterial, leatherMaterial],
+    dispose: () => {
+      cover.dispose();
+      leather.dispose();
+      spineTextures.dispose();
+      [leatherMaterial, coverTop, spineLeather].forEach((material) => material.dispose());
+    },
+  };
+}
+
 export function BookModel({ theme }: BookModelProps) {
   const root = useRef<THREE.Group>(null);
   const topHalf = useRef<THREE.Group>(null);
@@ -116,10 +252,9 @@ export function BookModel({ theme }: BookModelProps) {
     }
   }, []);
 
+  const themed = useMemo(() => getThemeAssets(theme), [theme]);
+
   const assets = useMemo(() => {
-    const cover = createCoverTextures(theme);
-    const leather = createLeatherTextures(theme);
-    const spineTextures = createSpineTextures(theme, BRAND_NAME_UPPER);
     const paper = createPaperTexture(3);
     const paperLeft = createPaperTexture(9);
     const edge = createPageEdgeTexture();
@@ -127,37 +262,6 @@ export function BookModel({ theme }: BookModelProps) {
     const printed = [createPrintedPageTexture(101), createPrintedPageTexture(202), createPrintedPageTexture(303)];
     const paperNormal = createPaperNormalTexture();
 
-    const leatherMaterial = new THREE.MeshPhysicalMaterial({
-      clearcoat: 0.1,
-      clearcoatRoughness: 0.45,
-      sheen: 0.25,
-      sheenRoughness: 0.6,
-      sheenColor: new THREE.Color("#8a4a3a"),
-      map: leather.map,
-      normalMap: leather.normalMap,
-      normalScale: new THREE.Vector2(0.8, 0.8),
-      roughness: 0.62,
-      metalness: 0,
-    });
-    const coverTop = new THREE.MeshPhysicalMaterial({
-      clearcoat: 0.1,
-      clearcoatRoughness: 0.45,
-      sheen: 0.25,
-      sheenRoughness: 0.6,
-      sheenColor: new THREE.Color("#8a4a3a"),
-      map: cover.map,
-      normalMap: cover.normalMap,
-      normalScale: new THREE.Vector2(1.1, 1.1),
-      roughnessMap: cover.surface,
-      metalnessMap: cover.surface,
-      roughness: 1,
-      metalness: 1,
-      emissive: new THREE.Color(theme.goldLight),
-      emissiveMap: cover.glow,
-      emissiveIntensity: 0,
-      envMapIntensity: 0.85,
-    });
-    const coverUniforms = enhanceCoverMaterial(coverTop, FLAME_POSITION);
     const edgeMaterial = new THREE.MeshStandardMaterial({ map: edge, bumpMap: edge, bumpScale: 1.5, metalness: 0.2, roughness: 0.55 });
     const hiddenPaper = new THREE.MeshStandardMaterial({ color: "#d9c9a6", roughness: 0.95 });
     const underPage = new THREE.MeshStandardMaterial({ map: printed[1], roughness: 0.93 });
@@ -170,16 +274,8 @@ export function BookModel({ theme }: BookModelProps) {
       createFlipPageMaterial(printed[index % printed.length], paperNormal),
     );
 
-    const coverGeometry = new RoundedBoxGeometry(coverWidth, coverThickness, coverDepth, 3, 0.022);
-    const pagesGeometry = new THREE.BoxGeometry(width, halfPages, depth, 1, 4, 48);
-    const pagePositions = pagesGeometry.attributes.position;
-    for (let i = 0; i < pagePositions.count; i++) {
-      if (pagePositions.getX(i) > width / 2 - 1e-4) {
-        const z = pagePositions.getZ(i);
-        pagePositions.setX(i, pagePositions.getX(i) + 0.007 * Math.sin(z * 9) + 0.004 * Math.sin(z * 23 + 1.3));
-      }
-    }
-    pagesGeometry.computeVertexNormals();
+    const coverGeometry = createCoverGeometry();
+    const pagesGeometry = createPagesGeometry();
     const rightPageGeometry = new THREE.PlaneGeometry(width, depth, 40, 1).rotateX(-Math.PI / 2);
     const rightPositions = rightPageGeometry.attributes.position;
     for (let i = 0; i < rightPositions.count; i++) {
@@ -196,38 +292,16 @@ export function BookModel({ theme }: BookModelProps) {
     const flipGeometry = new THREE.PlaneGeometry(width, depth, 40, 1)
       .rotateX(-Math.PI / 2)
       .translate(pageInset + width / 2, 0, 0);
-    const spineGeometry = new THREE.CylinderGeometry(axisY, axisY, coverDepth, 32, 1, true, Math.PI, Math.PI);
-    const spineLeather = new THREE.MeshPhysicalMaterial({
-      map: spineTextures.map,
-      roughnessMap: spineTextures.surface,
-      metalnessMap: spineTextures.surface,
-      normalMap: leather.normalMap,
-      normalScale: new THREE.Vector2(0.6, 0.6),
-      roughness: 1,
-      metalness: 1,
-      clearcoat: 0.1,
-      clearcoatRoughness: 0.45,
-      envMapIntensity: 0.85,
-      side: THREE.DoubleSide,
-    });
-
+    const spineGeometry = createSpineGeometry();
     return {
-      leatherMaterial,
-      spineLeather,
-      coverFaces: [leatherMaterial, leatherMaterial, coverTop, leatherMaterial, leatherMaterial, leatherMaterial],
       pageFaces: [edgeMaterial, hiddenPaper, underPage, hiddenPaper, edgeMaterial, edgeMaterial],
-      coverTop,
-      coverUniforms,
       rightPage,
       leftPage,
       flips,
       geometries: { coverGeometry, pagesGeometry, rightPageGeometry, leftPageGeometry, flipGeometry, spineGeometry },
       dispose: () => {
-        cover.dispose();
-        leather.dispose();
-        spineTextures.dispose();
         [paper, paperLeft, paperNormal, edge, blank, ...printed].forEach((texture) => texture.dispose());
-        [leatherMaterial, spineLeather, coverTop, edgeMaterial, hiddenPaper, underPage, rightPage.material, leftPage.material].forEach(
+        [edgeMaterial, hiddenPaper, underPage, rightPage.material, leftPage.material].forEach(
           (material) => material.dispose(),
         );
         flips.forEach((flip) => flip.material.dispose());
@@ -236,7 +310,7 @@ export function BookModel({ theme }: BookModelProps) {
         );
       },
     };
-  }, [theme]);
+  }, []);
 
   useEffect(() => assets.dispose, [assets]);
 
@@ -257,7 +331,7 @@ export function BookModel({ theme }: BookModelProps) {
   }, [assets]);
 
   const loadAnswer = (answer: PickedAnswer) => {
-    createAnswerTexture(answer.text, answer.page)
+    createAnswerTexture(answer.text, answer.page, answer.bookTitle)
       .then((texture) => {
         if (lastAnswer.current !== answer) {
           texture.dispose();
@@ -289,7 +363,7 @@ export function BookModel({ theme }: BookModelProps) {
     let tremble = 0;
     let fire = 0;
     assets.rightPage.uniforms.uTime.value = state.clock.elapsedTime;
-    const cover = assets.coverUniforms;
+    const cover = themed.coverUniforms;
     cover.uTime.value = state.clock.elapsedTime;
     cover.uGlint.value.set(motion.glint[0], motion.glint[1], motion.glint[2]);
     let ignite = 1.2;
@@ -469,7 +543,7 @@ export function BookModel({ theme }: BookModelProps) {
     cover.uGem.value =
       1.1 + 0.9 * Math.pow(0.5 + 0.5 * Math.sin(state.clock.elapsedTime * 1.3), 3) + motion.charge * 2.5 + motion.hover * 0.4;
     cover.uSparkle.value = THREE.MathUtils.damp(cover.uSparkle.value, sparkle, 6, delta);
-    assets.coverTop.emissiveIntensity = THREE.MathUtils.damp(assets.coverTop.emissiveIntensity, glow, 10, delta);
+    themed.coverTop.emissiveIntensity = THREE.MathUtils.damp(themed.coverTop.emissiveIntensity, glow, 10, delta);
 
     if (topHalf.current) topHalf.current.rotation.z = coverAngle;
     if (spine.current) spine.current.rotation.z = coverAngle / 2;
@@ -496,7 +570,7 @@ export function BookModel({ theme }: BookModelProps) {
     <group ref={root} onPointerOver={onPointerOver} onPointerOut={onPointerOut}>
       <mesh
         geometry={assets.geometries.coverGeometry}
-        material={assets.leatherMaterial}
+        material={themed.leatherMaterial}
         position={[spineX + coverWidth / 2, coverThickness / 2, 0]}
       />
       <mesh
@@ -523,7 +597,7 @@ export function BookModel({ theme }: BookModelProps) {
         />
         <mesh
           geometry={assets.geometries.coverGeometry}
-          material={assets.coverFaces}
+          material={themed.coverFaces}
           position={[coverWidth / 2, halfPages + coverThickness / 2, 0]}
         />
       </group>
@@ -531,7 +605,7 @@ export function BookModel({ theme }: BookModelProps) {
       <group ref={spine} position={[spineX, axisY, 0]}>
         <mesh
           geometry={assets.geometries.spineGeometry}
-          material={assets.spineLeather}
+          material={themed.spineLeather}
           rotation={[Math.PI / 2, 0, 0]}
         />
       </group>

@@ -291,7 +291,7 @@ function drawFleuron(ctx: CanvasRenderingContext2D, cx: number, cy: number, scal
   ctx.restore();
 }
 
-export async function createAnswerTexture(answer: string, pageNumber: number) {
+export async function createAnswerTexture(answer: string, pageNumber: number, bookTitle: string) {
   const family = getSerifFamily();
   await ensureFonts(family);
   const w = PAGE_TEXTURE_WIDTH;
@@ -365,8 +365,8 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
   ctx.fill();
 
   ctx.fillStyle = "rgba(255,0,0,0.7)";
-  ctx.font = `500 34px ${family}`;
-  ctx.fillText(`— ${toRoman(pageNumber)} —`, w / 2, h - 120);
+  ctx.font = `italic 500 32px ${family}`;
+  ctx.fillText(`— ${bookTitle} · ${toRoman(pageNumber)} —`, w / 2, h - 96);
 
   return canvasToTexture(canvas, false);
 }

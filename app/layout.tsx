@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
+import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 
 const cormorant = Cormorant_Garamond({
@@ -23,6 +24,7 @@ export const metadata: Metadata = {
   title: BRAND_NAME,
   description: DESCRIPTION,
   applicationName: BRAND_NAME,
+  appleWebApp: { capable: true, title: BRAND_NAME, statusBarStyle: "black-translucent" },
   openGraph: {
     title: `${BRAND_NAME} · ${BRAND_TAGLINE}`,
     description: DESCRIPTION,
@@ -53,6 +55,7 @@ export default function RootLayout({
     <html lang="tr">
       <body className={`${cormorant.variable} ${manrope.variable} antialiased`}>
         {children}
+        <RegisterServiceWorker />
       </body>
     </html>
   );

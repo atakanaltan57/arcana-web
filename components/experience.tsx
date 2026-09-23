@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { classicTheme } from "@/lib/themes";
 import { CHARGE_SECONDS, ritualMotion, ritualStore } from "@/lib/ritual-store";
 import { isSoundEnabled, setSoundEnabled, startDrone, stopDrone } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
@@ -22,6 +21,15 @@ import { PageActions } from "@/components/share/page-actions";
 import { PortalVeil } from "@/components/transition/portal-veil";
 import { ArcanaSeal } from "@/components/brand/arcana-seal";
 import { AwakeningVeil } from "@/components/brand/awakening-veil";
+import { BookShelf } from "@/components/shelf/book-shelf";
+import { PaywallSheet } from "@/components/premium/paywall-sheet";
+import { bookStore } from "@/lib/book-store";
+import { canOpen } from "@/lib/entitlements";
+import type { Book } from "@/lib/books";
+
+function clampValue(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
 type PreparedStory = {
   video: StoryVideo | null;
@@ -99,6 +107,7 @@ export function Experience() {
   const [ready, setReady] = useState(false);
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
   const [story, setStory] = useState<PreparedStory | null>(null);
+  const [paywall, setPaywall] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const answerRef = useRef("");
   const previousPhase = useRef<string>("idle");
@@ -107,16 +116,35 @@ export function Experience() {
     ritualStore.getSnapshot,
     ritualStore.getServerSnapshot,
   );
+  const { book, answers, error: bookError } = useSyncExternalStore(
+    bookStore.subscribe,
+    bookStore.getSnapshot,
+    bookStore.getServerSnapshot,
+  );
+  const locked = !canOpen(book);
+
+  useEffect(() => {
+    bookStore.hydrate();
+  }, []);
+
+  const selectBook = useCallback((next: Book) => bookStore.select(next.id), []);
+  const stepBook = useCallback((direction: 1 | -1) => bookStore.step(direction), []);
+  const drag = useRef<{ x: number; id: number; moved: boolean } | null>(null);
+  const closePaywall = useCallback(() => setPaywall(false), []);
 
   const begin = useCallback(() => {
-    if (!ready || story) return;
+    if (!ready || story || paywall) return;
+    if (locked) {
+      if (ritualStore.getSnapshot().phase === "idle") setPaywall(true);
+      return;
+    }
     if (ritualStore.begin()) {
       startDrone(CHARGE_SECONDS);
       vibrate([10, 90, 14, 70, 18, 50, 24, 30, 30]);
       const canvas = stageRef.current?.querySelector("canvas");
-      if (canvas) startStoryRecording(canvas);
+      if (canvas) startStoryRecording(canvas, bookStore.getSnapshot().book.title);
     }
-  }, [ready, story]);
+  }, [ready, story, paywall, locked]);
 
   useEffect(() => {
     if (phase === "revealed" && answer) answerRef.current = answer.text;
@@ -174,14 +202,63 @@ export function Experience() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (story || paywall) return;
+      if ((event.key === "ArrowRight" || event.key === "ArrowLeft") && ritualStore.getSnapshot().phase === "idle") {
+        if (event.target instanceof HTMLButtonElement) return;
+        event.preventDefault();
+        bookStore.step(event.key === "ArrowRight" ? 1 : -1);
+        return;
+      }
       if (event.key !== "Enter" && event.key !== " ") return;
-      if (event.target instanceof HTMLButtonElement || story) return;
+      if (event.target instanceof HTMLButtonElement) return;
       event.preventDefault();
       begin();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [begin, story]);
+  }, [begin, story, paywall]);
+
+  const releaseDrag = () => {
+    drag.current = null;
+    ritualMotion.carouselDrag = 0;
+  };
+
+  const onPointerDown = (event: React.PointerEvent) => {
+    if (!ready || story || paywall || !event.isPrimary) return;
+    drag.current = { x: event.clientX, id: event.pointerId, moved: false };
+  };
+
+  const onPointerMove = (event: React.PointerEvent) => {
+    const current = drag.current;
+    if (!current || current.id !== event.pointerId || phase !== "idle") return;
+    const dx = event.clientX - current.x;
+    if (Math.abs(dx) > 8) current.moved = true;
+    if (current.moved) ritualMotion.carouselDrag = clampValue(-dx / (window.innerWidth * 0.55), -1.2, 1.2);
+  };
+
+  const onPointerUp = (event: React.PointerEvent) => {
+    const current = drag.current;
+    releaseDrag();
+    if (!current || current.id !== event.pointerId) return;
+    const dx = event.clientX - current.x;
+    if (phase === "idle" && Math.abs(dx) > Math.min(70, window.innerWidth * 0.12)) {
+      bookStore.step(dx < 0 ? 1 : -1);
+      return;
+    }
+    if (current.moved) return;
+    if (phase === "idle") {
+      const edge = event.clientX / window.innerWidth;
+      if (edge < 0.16) {
+        bookStore.step(-1);
+        return;
+      }
+      if (edge > 0.84) {
+        bookStore.step(1);
+        return;
+      }
+    }
+    begin();
+  };
 
   const askAgain = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -190,11 +267,15 @@ export function Experience() {
 
   return (
     <main
-      className={`relative h-dvh w-full overflow-hidden bg-[#050608] ${phase === "idle" && ready ? "cursor-pointer" : ""}`}
-      onPointerDown={begin}
+      className={`relative h-dvh w-full touch-none overflow-hidden bg-[#050608] select-none ${phase === "idle" && ready ? "cursor-pointer" : ""}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={releaseDrag}
+      onPointerLeave={releaseDrag}
     >
       <div ref={stageRef} className="absolute inset-0">
-        <BookScene theme={classicTheme} onReady={() => setReady(true)} />
+        <BookScene bookId={book.id} onReady={() => setReady(true)} />
       </div>
 
       <AwakeningVeil visible={!ready} label="Kitap uyanıyor…" />
@@ -213,17 +294,45 @@ export function Experience() {
         <SoundToggle />
       </motion.header>
 
+      <AnimatePresence>
+        {ready && phase === "idle" && (
+          <motion.div
+            key="shelf"
+            className="pointer-events-none absolute inset-0 z-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <BookShelf book={book} onSelect={selectBook} onStep={stepBook} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex min-h-40 flex-col items-center justify-end px-6 pb-[max(env(safe-area-inset-bottom),2.5rem)] text-center">
         <AnimatePresence mode="wait">
           {ready && phase === "idle" && (
-            <motion.div key="idle" {...fade} transition={{ duration: 0.9, ease: "easeOut" }} className="flex flex-col items-center gap-3">
+            <motion.div key="idle" {...fade} transition={{ duration: 0.9, ease: "easeOut" }} className="flex w-full flex-col items-center gap-3">
               <p className="font-serif text-[1.8rem] italic leading-snug text-parchment [text-shadow:0_2px_16px_rgba(0,0,0,0.8)] sm:text-4xl">
-                Sorunu içinden geçir…
+                {locked ? `${book.title} mühürlü…` : "Sorunu içinden geçir…"}
               </p>
-              <p className="text-label uppercase text-parchment/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
-                ve kitaba dokun
-                <span className="hidden normal-case tracking-normal text-parchment-dim/80 [@media(hover:hover)]:inline"> · ya da Enter&apos;a bas</span>
-              </p>
+              {bookError ? (
+                <button
+                  type="button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() => bookStore.select(book.id)}
+                  className="btn-ghost focus-ring pointer-events-auto"
+                >
+                  Sayfalar yüklenemedi · Tekrar dene
+                </button>
+              ) : (
+                <p className="text-label uppercase text-parchment/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
+                  {locked ? "Kadim üyelikle açılır · dokun" : answers ? "ve kitaba dokun" : "sayfalar hazırlanıyor…"}
+                  {!locked && answers && (
+                    <span className="hidden normal-case tracking-normal text-parchment-dim/80 [@media(hover:hover)]:inline"> · ya da Enter&apos;a bas</span>
+                  )}
+                </p>
+              )}
               <motion.span
                 className="h-px w-16 bg-gradient-to-r from-transparent via-gold-bright to-transparent"
                 animate={{ opacity: [0.2, 1, 0.2], scaleX: [0.6, 1.4, 0.6] }}
@@ -256,6 +365,8 @@ export function Experience() {
       <AnimatePresence>
         {story && <StorySheet key="story" video={story.video} target={story.target} answer={story.answer} onClose={closeStory} />}
       </AnimatePresence>
+
+      <AnimatePresence>{paywall && <PaywallSheet key="paywall" book={book} onClose={closePaywall} />}</AnimatePresence>
 
       <p className="sr-only select-text" aria-live="polite">
         {phase === "revealed" && answer ? `Kitabın cevabı: ${answer.text}` : ""}

@@ -6,11 +6,13 @@ import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from "@r
 import { Bloom, EffectComposer, Noise, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
-import type { BookTheme } from "@/lib/themes";
 import { createWoodTextures } from "@/lib/textures/wood-texture";
 import { usePbrTextures } from "@/lib/textures/pbr";
+import { playRustle } from "@/lib/sound";
 import { ritualMotion } from "@/lib/ritual-store";
-import { BOOK_SIZE, BookModel, DROP_CAP_WORLD, RIGHT_PAGE } from "./book-model";
+import { BOOK_SIZE, BookModel, ClosedBook, DROP_CAP_WORLD, RIGHT_PAGE } from "./book-model";
+import { BOOKS, findBook } from "@/lib/books";
+import { ritualStore } from "@/lib/ritual-store";
 import { WormholeTunnel } from "./wormhole";
 import { BlackHoleLensEffect, LensTracker } from "./black-hole-lens";
 import { Candle } from "./candle";
@@ -21,6 +23,7 @@ import { CANDLE_POSITION, EFFECTS_LAYER, TUNNEL_ORIGIN } from "@/lib/scene-const
 const CLOSED_DIRECTION = new THREE.Vector3(0, 8.4, 6).normalize();
 const OPEN_DIRECTION = new THREE.Vector3(0, 0.94, 0.34).normalize();
 const FOV_TAN = Math.tan(THREE.MathUtils.degToRad(35 / 2));
+const CLOSED_MIN_DISTANCE = 12.2;
 const SPINE_X = -(BOOK_SIZE.width + BOOK_SIZE.overhang) / 2;
 const PAGE_Y = BOOK_SIZE.coverThickness + BOOK_SIZE.pagesThickness / 2;
 
@@ -44,7 +47,7 @@ function CameraRig() {
 
   const poses = useMemo(() => {
     const aspect = size.width / Math.max(size.height, 1);
-    const closedDistance = Math.max(10.3, 2.3 / (FOV_TAN * aspect));
+    const closedDistance = Math.max(CLOSED_MIN_DISTANCE, 2.3 / (FOV_TAN * aspect));
     const wide = aspect >= 1.05;
     const halfWidth = wide ? 3.5 : 1.75;
     const openDistance = Math.max(2.55 / FOV_TAN, halfWidth / (FOV_TAN * aspect));
@@ -84,7 +87,7 @@ function CameraRig() {
     scratch.target.set(
       THREE.MathUtils.lerp(0, poses.focusX, blend),
       THREE.MathUtils.lerp(0.2, PAGE_Y, blend),
-      THREE.MathUtils.lerp(0.25, 0.05, blend),
+      0.05,
     );
 
     if (dive > 0) {
@@ -107,6 +110,79 @@ function CameraRig() {
   });
 
   return null;
+}
+
+function BookCarousel({ bookId }: { bookId: string }) {
+  const size = useThree((state) => state.size);
+  const groups = useRef<(THREE.Group | null)[]>([]);
+  const active = useRef<THREE.Group>(null);
+  const index = Math.max(0, BOOKS.findIndex((book) => book.id === bookId));
+  const scroll = useRef(index);
+  const spread = useRef(1);
+  const lastIndex = useRef(index);
+
+  const spacing = useMemo(() => {
+    const aspect = size.width / Math.max(size.height, 1);
+    const closedDistance = Math.max(CLOSED_MIN_DISTANCE, 2.3 / (FOV_TAN * aspect));
+    const halfVisible = closedDistance * FOV_TAN * aspect;
+    return THREE.MathUtils.clamp(halfVisible * 0.95 + 1, 3.6, 4.6);
+  }, [size.width, size.height]);
+
+  useEffect(() => {
+    if (lastIndex.current !== index) playRustle(0.6);
+    lastIndex.current = index;
+  }, [index]);
+
+  useEffect(
+    () => () => {
+      ritualMotion.swapping = false;
+    },
+    [],
+  );
+
+  const place = (node: THREE.Group, offset: number, spreadFactor: number) => {
+    const distance = Math.min(Math.abs(offset), 1.6);
+    node.position.set(offset * spacing * spreadFactor, 0, -distance * 0.9);
+    node.rotation.set(0, -THREE.MathUtils.clamp(offset, -1, 1) * 0.32, 0);
+    node.scale.setScalar(1 - Math.min(distance, 1) * 0.1);
+  };
+
+  useFrame((_, delta) => {
+    const idle = ritualStore.getSnapshot().phase === "idle";
+    const target = index + (idle ? ritualMotion.carouselDrag : 0);
+    const dragging = ritualMotion.carouselDrag !== 0;
+    scroll.current = dragging ? THREE.MathUtils.damp(scroll.current, target, 18, delta) : THREE.MathUtils.damp(scroll.current, target, 7, delta);
+    spread.current = THREE.MathUtils.damp(spread.current, idle ? 1 : 3.2, 3, delta);
+    ritualMotion.swapping = dragging || Math.abs(scroll.current - index) > 0.03;
+
+    BOOKS.forEach((_, i) => {
+      const node = groups.current[i];
+      if (!node) return;
+      const offset = i - scroll.current;
+      node.visible = i !== index && Math.abs(offset * spread.current) < 2.6;
+      if (node.visible) place(node, offset, spread.current);
+    });
+    if (active.current) place(active.current, index - scroll.current, 1);
+  });
+
+  return (
+    <>
+      {BOOKS.map((book, i) => (
+        <group
+          key={book.id}
+          ref={(node) => {
+            groups.current[i] = node;
+          }}
+          visible={false}
+        >
+          {i !== index && <ClosedBook theme={book.theme} />}
+        </group>
+      ))}
+      <group ref={active}>
+        <BookModel theme={BOOKS[index].theme} />
+      </group>
+    </>
+  );
 }
 
 function SceneCandle({ color }: { color: string }) {
@@ -215,11 +291,12 @@ function ProceduralTable() {
 }
 
 type BookSceneProps = {
-  theme: BookTheme;
+  bookId: string;
   onReady: () => void;
 };
 
-export default function BookScene({ theme, onReady }: BookSceneProps) {
+export default function BookScene({ bookId, onReady }: BookSceneProps) {
+  const theme = findBook(bookId).theme;
   const [dpr, setDpr] = useState(1.5);
   const [effects, setEffects] = useState(true);
   const lens = useMemo(() => new BlackHoleLensEffect(), []);
@@ -261,7 +338,7 @@ export default function BookScene({ theme, onReady }: BookSceneProps) {
       <Suspense fallback={<ProceduralTable />}>
         <Table />
       </Suspense>
-      <BookModel theme={theme} />
+      <BookCarousel bookId={bookId} />
       <ContactShadows position={[0, 0.002, 0]} opacity={0.9} scale={14} blur={2.2} far={1.6} resolution={1024} color="#000000" />
       <DustParticles />
       <LensTracker effect={lens} center={DROP_CAP_WORLD} horizonRadius={0.11} />

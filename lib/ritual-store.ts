@@ -1,4 +1,5 @@
 import { pickAnswer, type PickedAnswer } from "@/lib/answers/pick-answer";
+import { bookStore } from "@/lib/book-store";
 
 export type RitualPhase = "idle" | "charging" | "opening" | "revealed" | "closing" | "portal" | "departed";
 
@@ -35,6 +36,8 @@ export const ritualMotion = {
   dive: 0,
   tunnel: 0,
   attractCenter: [0, 0.7, 0] as [number, number, number],
+  swapping: false,
+  carouselDrag: 0,
 };
 
 function resetMotion() {
@@ -71,13 +74,19 @@ export const ritualStore = {
   getSnapshot: () => snapshot,
   getServerSnapshot: () => serverSnapshot,
   begin() {
-    if (snapshot.phase !== "idle") return false;
+    if (snapshot.phase !== "idle" || ritualMotion.swapping || !bookStore.getSnapshot().answers) return false;
     emit({ phase: "charging", answer: null });
     return true;
   },
   open() {
     if (snapshot.phase !== "charging") return;
-    emit({ phase: "opening", answer: pickAnswer() });
+    const { book, answers } = bookStore.getSnapshot();
+    if (!answers) {
+      console.error(`Answers for "${book.id}" are not loaded; ritual reset`);
+      emit({ phase: "idle", answer: null });
+      return;
+    }
+    emit({ phase: "opening", answer: pickAnswer({ bookId: book.id, bookTitle: book.title, answers }) });
   },
   reveal() {
     if (snapshot.phase !== "opening") return;

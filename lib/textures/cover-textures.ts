@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
 import { traceBrandGem, traceBrandSymbol } from "./brand-symbol";
+import { drawThemedTooling } from "./cover-designs";
 import {
   alphaField,
   canvasToTexture,
@@ -312,7 +313,8 @@ export function createCoverTextures(theme: BookTheme): CoverTextures {
   ]);
 
   const goldCanvas = createCanvas(w, h);
-  drawGoldTooling(makeTool(goldCanvas.ctx));
+  const tool = makeTool(goldCanvas.ctx);
+  if (!drawThemedTooling(tool, theme.id, { w, h, gemSize: MEDALLION_RX * SYMBOL_SCALE })) drawGoldTooling(tool);
   const blindCanvas = createCanvas(w, h);
   drawBlindTooling(blindCanvas.ctx);
 

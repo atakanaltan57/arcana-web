@@ -42,7 +42,7 @@ function pickMimeType() {
   return MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
 }
 
-function createOverlay() {
+function createOverlay(bookTitle: string) {
   const canvas = document.createElement("canvas");
   canvas.width = STORY_WIDTH;
   canvas.height = STORY_HEIGHT;
@@ -75,6 +75,9 @@ function createOverlay() {
   ctx.letterSpacing = "14px";
   ctx.fillText(BRAND_NAME_UPPER, STORY_WIDTH / 2 + 7, 186);
   ctx.letterSpacing = "0px";
+  ctx.fillStyle = "rgba(239,227,200,0.9)";
+  ctx.font = `italic 500 28px ${family}`;
+  ctx.fillText(bookTitle, STORY_WIDTH / 2, 228);
 
   ctx.fillStyle = "rgba(239,227,200,0.85)";
   ctx.font = `italic 500 30px ${family}`;
@@ -105,7 +108,7 @@ export function cancelStoryRecording() {
   recording.recorder.stream.getVideoTracks().forEach((track) => track.stop());
 }
 
-export function startStoryRecording(source: HTMLCanvasElement) {
+export function startStoryRecording(source: HTMLCanvasElement, bookTitle: string) {
   if (!isStoryRecordingSupported()) return false;
   cancelStoryRecording();
   try {
@@ -114,7 +117,7 @@ export function startStoryRecording(source: HTMLCanvasElement) {
     canvas.height = STORY_HEIGHT;
     const ctx = canvas.getContext("2d");
     if (!ctx) return false;
-    const overlay = createOverlay();
+    const overlay = createOverlay(bookTitle);
 
     const stream = canvas.captureStream(30);
     const audio = getSoundStream();

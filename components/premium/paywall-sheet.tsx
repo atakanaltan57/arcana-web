@@ -1,0 +1,119 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import type { Book } from "@/lib/books";
+import { PLANS, PREMIUM_NAME, type PlanId } from "@/lib/pricing";
+import { ArcanaSeal } from "@/components/brand/arcana-seal";
+
+type PaywallSheetProps = {
+  book: Book;
+  onClose: () => void;
+};
+
+const BENEFITS = ["Tüm kadim kitaplar: Ay ve Gölge, ve gelecek her yeni cilt", "Reklamsız, kesintisiz ritüel", "Özel kapaklar ve altın sayfa"];
+
+export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
+  const [plan, setPlan] = useState<PlanId>("yearly");
+  const closeButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = requestAnimationFrame(() => closeButton.current?.focus());
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <motion.div
+      className="absolute inset-0 z-30 flex items-end justify-center bg-black/65 p-4 backdrop-blur-sm sm:items-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="paywall-title"
+    >
+      <motion.div
+        className="relative flex w-full max-w-sm flex-col items-center gap-5 rounded-3xl border border-gold/25 bg-[#0b0c10]/95 p-6 pb-7 text-center shadow-2xl"
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", damping: 26, stiffness: 260 }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          ref={closeButton}
+          type="button"
+          onClick={onClose}
+          aria-label="Kapat"
+          className="focus-ring absolute right-3 top-3 grid size-11 place-items-center rounded-full text-parchment/70 transition-colors hover:text-parchment"
+        >
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+
+        <div className="drop-shadow-[0_0_16px_rgba(236,208,138,0.4)]">
+          <ArcanaSeal className="size-16" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-micro uppercase text-gold-bright/85">{PREMIUM_NAME}</p>
+          <h2 id="paywall-title" className="font-serif text-3xl text-parchment">
+            {book.title} mühürlü
+          </h2>
+          <p className="font-serif text-lg italic text-parchment/80">Bu cilt yalnızca Kadim üyelerine açılır.</p>
+        </div>
+
+        <ul className="flex w-full flex-col gap-2.5 text-left">
+          {BENEFITS.map((benefit) => (
+            <li key={benefit} className="flex items-start gap-3 text-[0.95rem] text-parchment/90">
+              <span className="mt-1.5 size-2 shrink-0 rotate-45 bg-gold-bright shadow-[0_0_6px_rgba(236,208,138,0.8)]" aria-hidden />
+              {benefit}
+            </li>
+          ))}
+        </ul>
+
+        <div className="grid w-full grid-cols-2 gap-3" role="radiogroup" aria-label="Plan seç">
+          {PLANS.map((option) => {
+            const active = option.id === plan;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setPlan(option.id)}
+                className={`focus-ring relative flex min-h-24 flex-col items-center justify-center gap-0.5 rounded-2xl border px-3 py-3 transition-colors ${
+                  active ? "border-gold-bright/80 bg-gold/10" : "border-parchment/15 hover:border-gold/40"
+                }`}
+              >
+                {option.note && (
+                  <span className="absolute -top-2.5 rounded-full bg-gold-bright px-2 py-0.5 text-[0.75rem] font-semibold text-[#2a1806]">
+                    {option.note}
+                  </span>
+                )}
+                <span className="text-label uppercase text-parchment/80">{option.label}</span>
+                <span className="font-serif text-2xl text-gold-bright">{option.price}</span>
+                <span className="text-sm text-parchment/70">{option.period}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <button type="button" disabled className="btn-gold focus-ring w-full">
+          Çok yakında
+        </button>
+        <p className="text-sm text-parchment/65">Ödeme altyapısı hazırlanıyor. Ücretsiz kitaplar her zaman açık.</p>
+      </motion.div>
+    </motion.div>
+  );
+}
