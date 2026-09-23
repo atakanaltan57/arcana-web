@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { DOOR_HEIGHT, GATE } from "@/lib/gate-layout";
 import { easeInOutCubic } from "@/lib/easing";
 import { usePbrTextures } from "@/lib/textures/pbr";
-import { createSymbolMask } from "@/lib/textures/stone-textures";
+import { createSymbolMask, createSymbolRelief } from "@/lib/textures/stone-textures";
 import { createGemGeometry } from "@/lib/gem-geometry";
 import { createGemMaterial, setGemAwakening } from "./seal-socket";
 
@@ -46,7 +46,7 @@ function doorGeometry(side: -1 | 1) {
 }
 
 function sealHalfGeometry(side: -1 | 1) {
-  const geometry = new THREE.PlaneGeometry(SEAL_SIZE / 2, SEAL_SIZE);
+  const geometry = new THREE.PlaneGeometry(SEAL_SIZE / 2, SEAL_SIZE, 110, 220);
   const uvs = geometry.attributes.uv;
   for (let i = 0; i < uvs.count; i++) {
     uvs.setX(i, side === -1 ? uvs.getX(i) * 0.5 : 0.5 + uvs.getX(i) * 0.5);
@@ -78,7 +78,7 @@ function DoorLeaf({ side, geometry, sealGeometry, gemGeometry, gem, wood, iron, 
         <mesh key={y} geometry={band} material={iron} position={[inward * HALF * 0.5, y, front + 0.012]} />
       ))}
       <mesh geometry={sealGeometry} material={gold} position={[inward * (HALF - SEAL_SIZE / 4), SEAL_CENTER_Y, front + 0.004]} />
-      <mesh geometry={gemGeometry} material={gem} position={[inward * HALF, GEM_Y, front + 0.006]} />
+      <mesh geometry={gemGeometry} material={gem} position={[inward * HALF, GEM_Y, front + 0.046]} />
       <mesh geometry={mount} material={iron} position={[inward * (HALF - 0.45), 1.5, front + 0.02]} rotation={[Math.PI / 2, 0, 0]} />
       <mesh geometry={ring} material={iron} position={[inward * (HALF - 0.45), 1.28, front + 0.05]} />
     </>
@@ -100,6 +100,7 @@ export function GateDoors({ openAt, awakened }: GateDoorsProps) {
 
   const assets = useMemo(() => {
     const mask = createSymbolMask(1024, true);
+    const relief = createSymbolRelief(512, true);
     const wood = new THREE.MeshStandardMaterial({
       ...woodTextures,
       color: "#8a7560",
@@ -117,8 +118,10 @@ export function GateDoors({ openAt, awakened }: GateDoorsProps) {
       roughness: 0.32,
       alphaMap: mask,
       transparent: true,
-      bumpMap: mask,
-      bumpScale: 2,
+      bumpMap: relief,
+      bumpScale: 3,
+      displacementMap: relief,
+      displacementScale: 0.045,
       emissive: new THREE.Color("#f0c56a"),
       emissiveMap: mask,
       emissiveIntensity: 0.12,
@@ -182,6 +185,7 @@ export function GateDoors({ openAt, awakened }: GateDoorsProps) {
       beyondMaterial,
       dispose: () => {
         mask.dispose();
+        relief.dispose();
         [wood, iron, gold, gem, beyondMaterial].forEach((material) => material.dispose());
         [leftGeometry, rightGeometry, leftGem, rightGem, leftSeal, rightSeal, band, ring, mount, beyond].forEach((geometry) =>
           geometry.dispose(),
@@ -204,8 +208,7 @@ export function GateDoors({ openAt, awakened }: GateDoorsProps) {
       right.current.rotation.y = -swing;
       right.current.position.x = HALF - shake;
     }
-    const gemPulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 1.1);
-    setGemAwakening(assets.gem, Math.max(awakened * 0.45, progress), gemPulse);
+    setGemAwakening(assets.gem, Math.max(awakened * 0.45, progress), clock.elapsedTime);
     assets.gold.emissiveIntensity = 0.12 + Math.sin(clock.elapsedTime * 1.2) * 0.05 + progress * 1.8;
     if (glow.current) glow.current.visible = progress > 0.05;
     assets.beyondMaterial.uniforms.uTime.value = clock.elapsedTime;

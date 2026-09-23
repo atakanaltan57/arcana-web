@@ -65,23 +65,32 @@ export function createPaperNormalTexture() {
 }
 
 export function createPageEdgeTexture() {
-  const { canvas, ctx } = createCanvas(64, 512);
+  const width = 64;
+  const height = 256;
+  const { canvas, ctx } = createCanvas(width, height);
   const rand = seededRandom(21);
-  ctx.fillStyle = "rgb(222,206,172)";
-  ctx.fillRect(0, 0, 64, 512);
-  for (let y = 0; y < 512; y += 1) {
-    const shade = rand();
-    if (shade > 0.45) {
-      ctx.fillStyle = `rgba(110,82,48,${(shade - 0.45) * 0.55})`;
-      ctx.fillRect(0, y, 64, 1);
-    }
+  ctx.fillStyle = "rgb(188,150,86)";
+  ctx.fillRect(0, 0, width, height);
+  let y = 0;
+  while (y < height) {
+    const leaf = 3 + Math.floor(rand() * 3);
+    const tone = 0.85 + rand() * 0.3;
+    ctx.fillStyle = `rgb(${Math.round(196 * tone)},${Math.round(160 * tone)},${Math.round(94 * tone)})`;
+    ctx.fillRect(0, y, width, leaf - 1);
+    ctx.fillStyle = `rgba(92,62,28,${0.55 + rand() * 0.3})`;
+    ctx.fillRect(0, y + leaf - 1, width, 1);
+    y += leaf;
   }
-  const tint = ctx.createLinearGradient(0, 0, 0, 512);
-  tint.addColorStop(0, "rgba(120,85,40,0.25)");
-  tint.addColorStop(0.5, "rgba(120,85,40,0)");
-  tint.addColorStop(1, "rgba(120,85,40,0.25)");
+  for (let i = 0; i < 90; i++) {
+    ctx.fillStyle = `rgba(70,45,20,${rand() * 0.25})`;
+    ctx.fillRect(rand() * width, rand() * height, 1 + rand() * 6, 1 + rand() * 2);
+  }
+  const tint = ctx.createLinearGradient(0, 0, 0, height);
+  tint.addColorStop(0, "rgba(80,50,20,0.35)");
+  tint.addColorStop(0.5, "rgba(80,50,20,0)");
+  tint.addColorStop(1, "rgba(80,50,20,0.35)");
   ctx.fillStyle = tint;
-  ctx.fillRect(0, 0, 64, 512);
+  ctx.fillRect(0, 0, width, height);
   const texture = canvasToTexture(canvas, true);
   texture.wrapS = THREE.RepeatWrapping;
   return texture;
@@ -319,12 +328,12 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
 
   ctx.fillStyle = GOLD;
   ctx.strokeStyle = GOLD;
-  drawGlyphRow(ctx, CIPHER_CRIB_TOKENS, w / 2, 150, 26, decorRand);
+  drawGlyphRow(ctx, CIPHER_CRIB_TOKENS, w / 2, 166, 22, decorRand);
 
-  ctx.fillStyle = GOLD;
-  ctx.font = `600 38px ${family}`;
-  ctx.letterSpacing = "18px";
-  ctx.fillText(BRAND_NAME_UPPER, w / 2 + 8, 118);
+  ctx.fillStyle = RUBRIC;
+  ctx.font = `600 40px ${family}`;
+  ctx.letterSpacing = "16px";
+  ctx.fillText(BRAND_NAME_UPPER, w / 2 + 8, 116);
   ctx.letterSpacing = "0px";
 
   let size = 88;

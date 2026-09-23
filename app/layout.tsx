@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
-import { BRAND_NAME } from "@/lib/brand";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -16,9 +16,25 @@ const manrope = Manrope({
   weight: ["400", "500", "600"],
 });
 
+const DESCRIPTION = "Sorunu içinden geçir, parmağını kitaba koy. Kitap sana cevabını versin.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: BRAND_NAME,
-  description: "Sorunu içinden geçir, parmağını kitaba koy. Kitap sana cevabını versin.",
+  description: DESCRIPTION,
+  applicationName: BRAND_NAME,
+  openGraph: {
+    title: `${BRAND_NAME} · ${BRAND_TAGLINE}`,
+    description: DESCRIPTION,
+    siteName: BRAND_NAME,
+    locale: "tr_TR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${BRAND_NAME} · ${BRAND_TAGLINE}`,
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {

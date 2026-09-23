@@ -4,7 +4,13 @@ import { useEffect, useMemo } from "react";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 
-export type PbrSet = "medieval_wood" | "rusty_metal_03" | "rock_05" | "medieval_blocks_03" | "cobblestone_floor_001";
+export type PbrSet =
+  | "medieval_wood"
+  | "rusty_metal_03"
+  | "rock_05"
+  | "medieval_blocks_03"
+  | "cobblestone_floor_001"
+  | "wood_table_001";
 
 export type PbrTextures = {
   map: THREE.Texture;

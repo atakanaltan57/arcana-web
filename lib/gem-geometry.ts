@@ -7,22 +7,28 @@ type GemOptions = {
   half?: -1 | 1;
 };
 
-const OUTLINE: [number, number][] = [
+const CORNERS: [number, number][] = [
   [0, 1],
-  [-0.54, 0.54],
   [-1, 0],
-  [-0.54, -0.54],
   [0, -1],
-  [0.54, -0.54],
   [1, 0],
-  [0.54, 0.54],
 ];
+
+const OUTLINE: [number, number][] = CORNERS.flatMap(([ax, ay], i) => {
+  const [bx, by] = CORNERS[(i + 1) % CORNERS.length];
+  return [0, 0.25, 0.5, 0.75].map((t): [number, number] => {
+    const bulge = 1 + 0.07 * Math.sin(Math.PI * t);
+    return [(ax + (bx - ax) * t) * bulge, (ay + (by - ay) * t) * bulge];
+  });
+});
+
+const BOTTOM = OUTLINE.length / 2;
 
 const RINGS = [
   { scale: 1, z: 0, lift: 0 },
-  { scale: 1, z: 0.14, lift: 0 },
-  { scale: 0.64, z: 0.62, lift: 0.08 },
-  { scale: 0.3, z: 0.96, lift: 0.02 },
+  { scale: 1, z: 0.12, lift: 0 },
+  { scale: 0.72, z: 0.5, lift: 0.12 },
+  { scale: 0.42, z: 0.82, lift: -0.06 },
 ];
 
 export function createGemGeometry({ width, height, depth, half }: GemOptions) {
@@ -30,8 +36,8 @@ export function createGemGeometry({ width, height, depth, half }: GemOptions) {
   const point = (ringIndex: number, pointIndex: number) => {
     const ring = RINGS[ringIndex];
     const [ox, oy] = OUTLINE[pointIndex % OUTLINE.length];
-    const isMid = pointIndex % 2 === 1;
-    const z = (ring.z + (isMid ? ring.lift : 0)) * depth;
+    const odd = pointIndex % 2 === 1;
+    const z = (ring.z + (odd ? ring.lift : 0)) * depth;
     return new THREE.Vector3(clampX(ox * ring.scale * width), oy * ring.scale * height, z);
   };
 
@@ -57,7 +63,7 @@ export function createGemGeometry({ width, height, depth, half }: GemOptions) {
     const profile = [
       ...RINGS.map((_, ring) => point(ring, 0)),
       apex,
-      ...RINGS.map((_, ring) => point(ring, 4)).reverse(),
+      ...RINGS.map((_, ring) => point(ring, BOTTOM)).reverse(),
     ];
     const center = new THREE.Vector3(0, 0, depth * 0.4);
     for (let i = 0; i < profile.length - 1; i++) {
@@ -97,4 +103,14 @@ export function createGemBezelGeometry(width: number, height: number, rim: numbe
     bevelSize: rim * 0.25,
     bevelSegments: 2,
   });
+}
+
+export function createGemFoilGeometry(width: number, height: number) {
+  const shape = new THREE.Shape();
+  OUTLINE.forEach(([x, y], index) => {
+    if (index === 0) shape.moveTo(x * width, y * height);
+    else shape.lineTo(x * width, y * height);
+  });
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
 }

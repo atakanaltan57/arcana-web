@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -8,6 +8,7 @@ import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
 import { createWoodTextures } from "@/lib/textures/wood-texture";
+import { usePbrTextures } from "@/lib/textures/pbr";
 import { ritualMotion } from "@/lib/ritual-store";
 import { BOOK_SIZE, BookModel, DROP_CAP_WORLD, RIGHT_PAGE } from "./book-model";
 import { WormholeTunnel } from "./wormhole";
@@ -173,7 +174,28 @@ function GlintLight() {
   return <pointLight ref={light} position={[1.5, 3.4, 3.2]} color="#ffe2b8" intensity={4.5} decay={2} />;
 }
 
+const TABLE_REPEAT: [number, number] = [4, 4];
+
 function Table() {
+  const wood = usePbrTextures("wood_table_001", TABLE_REPEAT, Math.PI / 2);
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]}>
+      <planeGeometry args={[30, 30]} />
+      <meshStandardMaterial
+        map={wood.map}
+        normalMap={wood.normalMap}
+        normalScale={[1.2, 1.2]}
+        color="#e0ae84"
+        roughness={0.82}
+        metalness={0}
+        envMapIntensity={0.06}
+      />
+    </mesh>
+  );
+}
+
+function ProceduralTable() {
   const wood = useMemo(() => createWoodTextures(), []);
   useEffect(() => wood.dispose, [wood]);
 
@@ -236,7 +258,9 @@ export default function BookScene({ theme, onReady }: BookSceneProps) {
         <Lightformer form="rect" intensity={0.3} color="#6d7fe0" position={[6, 2, 3]} scale={[2, 6, 1]} target={[0, 0, 0]} />
       </Environment>
 
-      <Table />
+      <Suspense fallback={<ProceduralTable />}>
+        <Table />
+      </Suspense>
       <BookModel theme={theme} />
       <ContactShadows position={[0, 0.002, 0]} opacity={0.9} scale={14} blur={2.2} far={1.6} resolution={1024} color="#000000" />
       <DustParticles />

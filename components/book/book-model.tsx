@@ -158,7 +158,7 @@ export function BookModel({ theme }: BookModelProps) {
       envMapIntensity: 0.85,
     });
     const coverUniforms = enhanceCoverMaterial(coverTop, FLAME_POSITION);
-    const edgeMaterial = new THREE.MeshStandardMaterial({ map: edge, roughness: 0.9 });
+    const edgeMaterial = new THREE.MeshStandardMaterial({ map: edge, bumpMap: edge, bumpScale: 1.5, metalness: 0.2, roughness: 0.55 });
     const hiddenPaper = new THREE.MeshStandardMaterial({ color: "#d9c9a6", roughness: 0.95 });
     const underPage = new THREE.MeshStandardMaterial({ map: printed[1], roughness: 0.93 });
 

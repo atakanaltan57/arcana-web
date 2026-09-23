@@ -102,8 +102,8 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
                     key={index}
                     className={`size-2 rotate-45 rounded-[1px] ${
                       broken.includes(index)
-                        ? "bg-gold-bright shadow-[0_0_6px_rgba(236,208,138,0.8)]"
-                        : "bg-[#7a1420] ring-1 ring-[#b8303f]/50"
+                        ? "bg-[#fff4dc] shadow-[0_0_8px_rgba(255,236,190,0.9)]"
+                        : "bg-[#2b2520] ring-1 ring-[#9c8a70]/60"
                     }`}
                   />
                 ))}

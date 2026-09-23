@@ -13,6 +13,14 @@ export function createNumeralTexture(text: string) {
 }
 
 export function createSymbolMask(size: number, ring: boolean) {
+  return canvasToTexture(drawSymbolMask(size, ring), false);
+}
+
+export function createSymbolRelief(size: number, ring: boolean) {
+  return canvasToTexture(softenCanvas(drawSymbolMask(size, ring), 5), false);
+}
+
+function drawSymbolMask(size: number, ring: boolean) {
   const { canvas, ctx } = createCanvas(size, size);
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, size, size);
@@ -25,7 +33,7 @@ export function createSymbolMask(size: number, ring: boolean) {
     ctx.arc(size / 2, size / 2, size * 0.47, 0, Math.PI * 2);
     ctx.stroke();
   }
-  return canvasToTexture(canvas, false);
+  return canvas;
 }
 
 export function createGemCrackTexture(seed: number) {

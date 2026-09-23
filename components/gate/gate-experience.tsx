@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SealGate, shareSeals } from "@/components/seal/seal-gate";
 import { AwakeningVeil } from "@/components/brand/awakening-veil";
+import { ArcanaSeal } from "@/components/brand/arcana-seal";
 import { SEAL_COUNT, readBrokenSeals } from "@/lib/seals";
 import { playArrival, playDoorGrind, playSealCrack } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
@@ -98,6 +99,14 @@ export function GateExperience() {
             animate={{ opacity: 1 }}
             transition={{ duration: 2 }}
           >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.6, delay: 0.6, ease: "easeOut" }}
+              className="drop-shadow-[0_0_24px_rgba(255,236,190,0.9)]"
+            >
+              <ArcanaSeal className="size-24" />
+            </motion.div>
             <p className="text-label uppercase text-[#3a2508]/90">9 / 9 mühür</p>
             <h2 className="max-w-md font-serif text-4xl leading-tight text-[#2a1806] sm:text-5xl">
               Kadim Yazıcılar arasına katıldın
