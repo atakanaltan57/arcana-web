@@ -24,6 +24,8 @@ import { AwakeningVeil } from "@/components/brand/awakening-veil";
 import { BookShelf } from "@/components/shelf/book-shelf";
 import { PaywallSheet } from "@/components/premium/paywall-sheet";
 import { bookStore } from "@/lib/book-store";
+import { getMessages, localeStore, useMessages } from "@/lib/i18n/locale-store";
+import { LanguageToggle } from "@/components/brand/language-toggle";
 import { canOpen } from "@/lib/entitlements";
 import type { Book } from "@/lib/books";
 
@@ -66,6 +68,7 @@ function ChargeLine() {
 }
 
 function SoundToggle() {
+  const messages = useMessages();
   const [on, setOn] = useState(true);
 
   useEffect(() => {
@@ -85,7 +88,7 @@ function SoundToggle() {
       type="button"
       onClick={toggle}
       onPointerDown={(event) => event.stopPropagation()}
-      aria-label={on ? "Sesi kapat" : "Sesi aç"}
+      aria-label={on ? messages.sound.off : messages.sound.on}
       className="focus-ring pointer-events-auto grid size-11 place-items-center rounded-full text-parchment/85 transition-colors hover:text-gold-bright"
     >
       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
@@ -123,7 +126,11 @@ export function Experience() {
   );
   const locked = !canOpen(book);
 
+  const messages = useMessages();
+  const bookText = messages.books[book.id];
+
   useEffect(() => {
+    localeStore.hydrate();
     bookStore.hydrate();
   }, []);
 
@@ -142,7 +149,7 @@ export function Experience() {
       startDrone(CHARGE_SECONDS);
       vibrate([10, 90, 14, 70, 18, 50, 24, 30, 30]);
       const canvas = stageRef.current?.querySelector("canvas");
-      if (canvas) startStoryRecording(canvas, bookStore.getSnapshot().book.title);
+      if (canvas) startStoryRecording(canvas, getMessages().books[bookStore.getSnapshot().book.id].title);
     }
   }, [ready, story, paywall, locked]);
 
@@ -278,7 +285,7 @@ export function Experience() {
         <BookScene bookId={book.id} onReady={() => setReady(true)} />
       </div>
 
-      <AwakeningVeil visible={!ready} label="Kitap uyanıyor…" />
+      <AwakeningVeil visible={!ready} label={messages.home.awakening} />
 
       <motion.header
         className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),1.25rem)] sm:px-8"
@@ -286,7 +293,7 @@ export function Experience() {
         animate={ready ? { opacity: phase === "opening" ? 0.3 : 1 } : undefined}
         transition={{ duration: 1.2, ease: "easeOut" }}
       >
-        <span className="size-11" aria-hidden />
+        <LanguageToggle />
         <h1 className="flex items-center gap-2.5 text-label font-medium uppercase text-gold-bright/90">
           <ArcanaSeal className="size-5" />
           {BRAND_NAME}
@@ -314,7 +321,7 @@ export function Experience() {
           {ready && phase === "idle" && (
             <motion.div key="idle" {...fade} transition={{ duration: 0.9, ease: "easeOut" }} className="flex w-full flex-col items-center gap-3">
               <p className="font-serif text-[1.8rem] italic leading-snug text-parchment [text-shadow:0_2px_16px_rgba(0,0,0,0.8)] sm:text-4xl">
-                {locked ? `${book.title} mühürlü…` : "Sorunu içinden geçir…"}
+                {locked ? messages.home.lockedPrompt(bookText.title) : messages.home.prompt}
               </p>
               {bookError ? (
                 <button
@@ -323,13 +330,13 @@ export function Experience() {
                   onClick={() => bookStore.select(book.id)}
                   className="btn-ghost focus-ring pointer-events-auto"
                 >
-                  Sayfalar yüklenemedi · Tekrar dene
+                  {messages.home.loadError}
                 </button>
               ) : (
                 <p className="text-label uppercase text-parchment/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
-                  {locked ? "Kadim üyelikle açılır · dokun" : answers ? "ve kitaba dokun" : "sayfalar hazırlanıyor…"}
+                  {locked ? messages.home.lockedHint : answers ? messages.home.touchHint : messages.home.loadingPages}
                   {!locked && answers && (
-                    <span className="hidden normal-case tracking-normal text-parchment-dim/80 [@media(hover:hover)]:inline"> · ya da Enter&apos;a bas</span>
+                    <span className="hidden normal-case tracking-normal text-parchment-dim/80 [@media(hover:hover)]:inline">{messages.home.keyHint}</span>
                   )}
                 </p>
               )}
@@ -343,14 +350,14 @@ export function Experience() {
 
           {phase === "charging" && (
             <motion.div key="charging" {...fade} transition={{ duration: 0.5 }} className="flex flex-col items-center gap-4">
-              <p className="font-serif text-2xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">Kitap seni dinliyor…</p>
+              <p className="font-serif text-2xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">{messages.home.listening}</p>
               <ChargeLine />
             </motion.div>
           )}
 
           {phase === "closing" && shareTarget && (
             <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">
-              Hikayen hazırlanıyor…
+              {messages.home.preparingStory}
             </motion.p>
           )}
         </AnimatePresence>
@@ -369,7 +376,7 @@ export function Experience() {
       <AnimatePresence>{paywall && <PaywallSheet key="paywall" book={book} onClose={closePaywall} />}</AnimatePresence>
 
       <p className="sr-only select-text" aria-live="polite">
-        {phase === "revealed" && answer ? `Kitabın cevabı: ${answer.text}` : ""}
+        {phase === "revealed" && answer ? messages.home.answerAnnouncement(answer.text) : ""}
       </p>
     </main>
   );

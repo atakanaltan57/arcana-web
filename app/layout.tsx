@@ -30,6 +30,7 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     siteName: BRAND_NAME,
     locale: "tr_TR",
+    alternateLocale: ["en_US"],
     type: "website",
   },
   twitter: {

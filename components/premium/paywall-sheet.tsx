@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { Book } from "@/lib/books";
-import { PLANS, PREMIUM_NAME, type PlanId } from "@/lib/pricing";
+import { PLAN_IDS, type PlanId } from "@/lib/pricing";
+import { useMessages } from "@/lib/i18n/locale-store";
 import { ArcanaSeal } from "@/components/brand/arcana-seal";
 
 type PaywallSheetProps = {
@@ -11,9 +12,9 @@ type PaywallSheetProps = {
   onClose: () => void;
 };
 
-const BENEFITS = ["Tüm kadim kitaplar: Ay ve Gölge, ve gelecek her yeni cilt", "Reklamsız, kesintisiz ritüel", "Özel kapaklar ve altın sayfa"];
-
 export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
+  const messages = useMessages();
+  const copy = messages.paywall;
   const [plan, setPlan] = useState<PlanId>("yearly");
   const closeButton = useRef<HTMLButtonElement>(null);
 
@@ -54,7 +55,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
           ref={closeButton}
           type="button"
           onClick={onClose}
-          aria-label="Kapat"
+          aria-label={messages.close}
           className="focus-ring absolute right-3 top-3 grid size-11 place-items-center rounded-full text-parchment/70 transition-colors hover:text-parchment"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
@@ -66,15 +67,15 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
           <ArcanaSeal className="size-16" />
         </div>
         <div className="flex flex-col gap-1.5">
-          <p className="text-micro uppercase text-gold-bright/85">{PREMIUM_NAME}</p>
+          <p className="text-micro uppercase text-gold-bright/85">{copy.name}</p>
           <h2 id="paywall-title" className="font-serif text-3xl text-parchment">
-            {book.title} mühürlü
+            {copy.sealed(messages.books[book.id].title)}
           </h2>
-          <p className="font-serif text-lg italic text-parchment/80">Bu cilt yalnızca Kadim üyelerine açılır.</p>
+          <p className="font-serif text-lg italic text-parchment/80">{copy.subtitle}</p>
         </div>
 
         <ul className="flex w-full flex-col gap-2.5 text-left">
-          {BENEFITS.map((benefit) => (
+          {copy.benefits.map((benefit) => (
             <li key={benefit} className="flex items-start gap-3 text-[0.95rem] text-parchment/90">
               <span className="mt-1.5 size-2 shrink-0 rotate-45 bg-gold-bright shadow-[0_0_6px_rgba(236,208,138,0.8)]" aria-hidden />
               {benefit}
@@ -82,16 +83,17 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
           ))}
         </ul>
 
-        <div className="grid w-full grid-cols-2 gap-3" role="radiogroup" aria-label="Plan seç">
-          {PLANS.map((option) => {
-            const active = option.id === plan;
+        <div className="grid w-full grid-cols-2 gap-3" role="radiogroup" aria-label={copy.choosePlan}>
+          {PLAN_IDS.map((id) => {
+            const option = copy.plans[id];
+            const active = id === plan;
             return (
               <button
-                key={option.id}
+                key={id}
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => setPlan(option.id)}
+                onClick={() => setPlan(id)}
                 className={`focus-ring relative flex min-h-24 flex-col items-center justify-center gap-0.5 rounded-2xl border px-3 py-3 transition-colors ${
                   active ? "border-gold-bright/80 bg-gold/10" : "border-parchment/15 hover:border-gold/40"
                 }`}
@@ -110,9 +112,9 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
         </div>
 
         <button type="button" disabled className="btn-gold focus-ring w-full">
-          Çok yakında
+          {copy.soon}
         </button>
-        <p className="text-sm text-parchment/65">Ödeme altyapısı hazırlanıyor. Ücretsiz kitaplar her zaman açık.</p>
+        <p className="text-sm text-parchment/65">{copy.footnote}</p>
       </motion.div>
     </motion.div>
   );

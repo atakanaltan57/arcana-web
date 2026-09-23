@@ -7,69 +7,56 @@ import {
   shadowTheme,
   type BookTheme,
 } from "@/lib/themes";
+import type { Locale } from "@/lib/i18n/locale-store";
+
+type AnswerModule = { default: string[] };
+type AnswerLoaders = Record<Locale, () => Promise<AnswerModule>>;
 
 export type Book = {
   id: string;
-  title: string;
-  subtitle: string;
   theme: BookTheme;
   premium: boolean;
-  loadAnswers: () => Promise<string[]>;
+  loadAnswers: (locale: Locale) => Promise<string[]>;
 };
 
+function book(id: string, theme: BookTheme, premium: boolean, loaders: AnswerLoaders): Book {
+  return {
+    id,
+    theme,
+    premium,
+    loadAnswers: (locale) => loaders[locale]().then((module) => module.default),
+  };
+}
+
 export const BOOKS: Book[] = [
-  {
-    id: "genel",
-    title: "Cevaplar Kitabı",
-    subtitle: "Her soruya",
-    theme: classicTheme,
-    premium: false,
-    loadAnswers: () => import("@/lib/answers/genel.json").then((module) => module.default),
-  },
-  {
-    id: "ask",
-    title: "Aşk Kitabı",
-    subtitle: "Kalbin soruları",
-    theme: loveTheme,
-    premium: false,
-    loadAnswers: () => import("@/lib/answers/ask.json").then((module) => module.default),
-  },
-  {
-    id: "yol",
-    title: "Yol Kitabı",
-    subtitle: "İş ve kararlar",
-    theme: pathTheme,
-    premium: false,
-    loadAnswers: () => import("@/lib/answers/yol.json").then((module) => module.default),
-  },
-  {
-    id: "kader",
-    title: "Kader Kitabı",
-    subtitle: "Yazgı ve işaretler",
-    theme: fateTheme,
-    premium: false,
-    loadAnswers: () => import("@/lib/answers/kader.json").then((module) => module.default),
-  },
-  {
-    id: "ay",
-    title: "Ay Kitabı",
-    subtitle: "Gecenin bilgeliği",
-    theme: moonTheme,
-    premium: true,
-    loadAnswers: () => import("@/lib/answers/ay.json").then((module) => module.default),
-  },
-  {
-    id: "golge",
-    title: "Gölge Kitabı",
-    subtitle: "İçindeki karanlık",
-    theme: shadowTheme,
-    premium: true,
-    loadAnswers: () => import("@/lib/answers/golge.json").then((module) => module.default),
-  },
+  book("genel", classicTheme, false, {
+    tr: () => import("@/lib/answers/genel.json"),
+    en: () => import("@/lib/answers/en/genel.json"),
+  }),
+  book("ask", loveTheme, false, {
+    tr: () => import("@/lib/answers/ask.json"),
+    en: () => import("@/lib/answers/en/ask.json"),
+  }),
+  book("yol", pathTheme, false, {
+    tr: () => import("@/lib/answers/yol.json"),
+    en: () => import("@/lib/answers/en/yol.json"),
+  }),
+  book("kader", fateTheme, false, {
+    tr: () => import("@/lib/answers/kader.json"),
+    en: () => import("@/lib/answers/en/kader.json"),
+  }),
+  book("ay", moonTheme, true, {
+    tr: () => import("@/lib/answers/ay.json"),
+    en: () => import("@/lib/answers/en/ay.json"),
+  }),
+  book("golge", shadowTheme, true, {
+    tr: () => import("@/lib/answers/golge.json"),
+    en: () => import("@/lib/answers/en/golge.json"),
+  }),
 ];
 
 export const DEFAULT_BOOK = BOOKS[0];
 
 export function findBook(id: string | null | undefined) {
-  return BOOKS.find((book) => book.id === id) ?? DEFAULT_BOOK;
+  return BOOKS.find((item) => item.id === id) ?? DEFAULT_BOOK;
 }

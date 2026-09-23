@@ -1,4 +1,5 @@
 import { BRAND_NAME } from "@/lib/brand";
+import { getMessages } from "@/lib/i18n/locale-store";
 import type { StoryVideo } from "@/lib/story-recorder";
 
 export type ShareTarget = "instagram" | "tiktok" | "whatsapp";
@@ -11,21 +12,15 @@ export const SHARE_LABELS: Record<ShareTarget, string> = {
   whatsapp: "WhatsApp",
 };
 
-export const SHARE_CTA: Record<ShareTarget, string> = {
-  instagram: "Instagram'da paylaş",
-  tiktok: "TikTok'ta paylaş",
-  whatsapp: "WhatsApp'ta paylaş",
-};
-
 export function shareText(answer: string) {
-  return `${BRAND_NAME} bana şunu söyledi: “${answer}”`;
+  return getMessages().share.text(BRAND_NAME, answer);
 }
 
 export function downloadStory(video: StoryVideo) {
   const url = URL.createObjectURL(video.blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `arcana-cevap.${video.extension}`;
+  link.download = `${getMessages().share.fileName}.${video.extension}`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -44,7 +39,7 @@ export async function shareStory(video: StoryVideo | null, target: ShareTarget, 
   const text = shareText(answer);
 
   if (video) {
-    const file = new File([video.blob], `arcana-cevap.${video.extension}`, { type: video.mimeType });
+    const file = new File([video.blob], `${getMessages().share.fileName}.${video.extension}`, { type: video.mimeType });
     if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file], text });

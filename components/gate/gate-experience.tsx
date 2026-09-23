@@ -6,6 +6,8 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SealGate, shareSeals } from "@/components/seal/seal-gate";
 import { AwakeningVeil } from "@/components/brand/awakening-veil";
+import { localeStore, useMessages } from "@/lib/i18n/locale-store";
+import { BRAND_NAME } from "@/lib/brand";
 import { ArcanaSeal } from "@/components/brand/arcana-seal";
 import { SEAL_COUNT, readBrokenSeals } from "@/lib/seals";
 import { playArrival, playDoorGrind, playSealCrack } from "@/lib/sound";
@@ -40,8 +42,15 @@ export function GateExperience() {
   const [finale, setFinale] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
+  const messages = useMessages();
+  const copy = messages.gate;
 
   useEffect(() => {
+    document.title = `${copy.title} · ${BRAND_NAME}`;
+  }, [copy.title]);
+
+  useEffect(() => {
+    localeStore.hydrate();
     const saved = readBrokenSeals();
     setBroken(saved);
     setViaPortal(consumeArrival());
@@ -107,12 +116,12 @@ export function GateExperience() {
             >
               <ArcanaSeal className="size-24" />
             </motion.div>
-            <p className="text-label uppercase text-[#3a2508]/90">9 / 9 mühür</p>
+            <p className="text-label uppercase text-[#3a2508]/90">{copy.finaleCount(SEAL_COUNT)}</p>
             <h2 className="max-w-md font-serif text-4xl leading-tight text-[#2a1806] sm:text-5xl">
-              Kadim Yazıcılar arasına katıldın
+              {copy.finaleTitle}
             </h2>
             <p className="max-w-sm font-serif text-lg italic text-[#3a2508]/85">
-              Kapı artık senin için hep açık. Sırrı taşıyan, sırrın mührü olur.
+              {copy.finaleBody}
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-3">
               <button
@@ -120,13 +129,13 @@ export function GateExperience() {
                 onClick={async () => setShareNote(await shareSeals(SEAL_COUNT))}
                 className="focus-ring inline-flex min-h-12 items-center rounded-full bg-[#2a1806] px-7 font-serif text-lg text-[#f3dc9a] shadow-lg transition-transform hover:scale-[1.03]"
               >
-                Bunu paylaş
+                {copy.finaleShare}
               </button>
               <Link
                 href="/"
                 className="focus-ring inline-flex min-h-12 items-center rounded-full border border-[#2a1806]/50 px-7 font-serif text-lg text-[#2a1806] transition-colors hover:bg-[#2a1806]/10"
               >
-                Kitaba dön
+                {copy.back}
               </Link>
             </div>
             {shareNote && <p className="text-sm text-[#3a2508]">{shareNote}</p>}
@@ -134,7 +143,7 @@ export function GateExperience() {
         )}
       </AnimatePresence>
 
-      <AwakeningVeil visible={!ready && arrivalChecked && !viaPortal} label="Kapı beliriyor…" background="bg-[#040406]" />
+      <AwakeningVeil visible={!ready && arrivalChecked && !viaPortal} label={copy.arriving} background="bg-[#040406]" />
 
       <AnimatePresence>
         {(viaPortal || !arrivalChecked) && (

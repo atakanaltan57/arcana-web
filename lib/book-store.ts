@@ -1,4 +1,5 @@
 import { BOOKS, DEFAULT_BOOK, findBook, type Book } from "@/lib/books";
+import { localeStore } from "@/lib/i18n/locale-store";
 
 const STORAGE_KEY = "arcana-book";
 
@@ -20,21 +21,28 @@ function emit(next: BookSnapshot) {
 }
 
 async function load(book: Book) {
-  const cached = cache.get(book.id);
+  const locale = localeStore.getSnapshot();
+  const key = `${locale}:${book.id}`;
+  const current = () => snapshot.book.id === book.id && localeStore.getSnapshot() === locale;
+  const cached = cache.get(key);
   if (cached) {
     emit({ book, answers: cached, error: false });
     return;
   }
   emit({ book, answers: null, error: false });
   try {
-    const answers = await book.loadAnswers();
-    cache.set(book.id, answers);
-    if (snapshot.book.id === book.id) emit({ book, answers, error: false });
+    const answers = await book.loadAnswers(locale);
+    cache.set(key, answers);
+    if (current()) emit({ book, answers, error: false });
   } catch (error) {
-    console.error(`Answers for "${book.id}" could not be loaded`, error);
-    if (snapshot.book.id === book.id) emit({ book, answers: null, error: true });
+    console.error(`Answers for "${book.id}" (${locale}) could not be loaded`, error);
+    if (current()) emit({ book, answers: null, error: true });
   }
 }
+
+localeStore.subscribe(() => {
+  if (hydrated) void load(snapshot.book);
+});
 
 function persist(id: string) {
   try {

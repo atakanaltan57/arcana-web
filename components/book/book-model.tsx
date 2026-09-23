@@ -33,6 +33,7 @@ import type { PickedAnswer } from "@/lib/answers/pick-answer";
 import { clamp01, easeInOutCubic, easeOutCubic } from "@/lib/easing";
 import { playChime, playCrackle, playPortalRumble, playRustle, playTunnel, playWhoosh, stopDrone } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
+import { useLocale } from "@/lib/i18n/locale-store";
 import { BURN_DURATION, BURN_IGNITION, EmberParticles } from "./ember-particles";
 import { enhanceCoverMaterial } from "./cover-material";
 import { GemGlint, Starburst } from "./starburst";
@@ -294,6 +295,7 @@ export function BookModel({ theme }: BookModelProps) {
       .translate(pageInset + width / 2, 0, 0);
     const spineGeometry = createSpineGeometry();
     return {
+      blankText: blank,
       pageFaces: [edgeMaterial, hiddenPaper, underPage, hiddenPaper, edgeMaterial, edgeMaterial],
       rightPage,
       leftPage,
@@ -314,6 +316,8 @@ export function BookModel({ theme }: BookModelProps) {
 
   useEffect(() => assets.dispose, [assets]);
 
+  const locale = useLocale();
+
   useEffect(() => {
     let cancelled = false;
     createEpigraphTexture()
@@ -322,13 +326,15 @@ export function BookModel({ theme }: BookModelProps) {
           texture.dispose();
           return;
         }
+        const previous = assets.leftPage.uniforms.uText.value;
         assets.leftPage.uniforms.uText.value = texture;
+        if (previous && previous !== texture && previous !== assets.blankText) previous.dispose();
       })
       .catch((error: unknown) => console.error("Epigraph texture failed", error));
     return () => {
       cancelled = true;
     };
-  }, [assets]);
+  }, [assets, locale]);
 
   const loadAnswer = (answer: PickedAnswer) => {
     createAnswerTexture(answer.text, answer.page, answer.bookTitle)

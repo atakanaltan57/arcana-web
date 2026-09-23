@@ -5,6 +5,9 @@ import Link from "next/link";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { toRoman } from "@/lib/cipher";
 import { SEAL_COUNT, findSeal, saveBrokenSeal } from "@/lib/seals";
+import { BRAND_NAME } from "@/lib/brand";
+import { getMessages, useMessages } from "@/lib/i18n/locale-store";
+import { LanguageToggle } from "@/components/brand/language-toggle";
 
 type Status =
   | { kind: "idle" }
@@ -21,9 +24,8 @@ type SealGateProps = {
 };
 
 export function sealShareMessage(count: number) {
-  return count >= SEAL_COUNT
-    ? "ARCANA'nın dokuz kadim mührünü de kırdım. Kapı açıldı."
-    : `ARCANA'nın kadim mühürlerinden ${count}/${SEAL_COUNT} tanesini kırdım. Sen kaç tanesini çözebilirsin?`;
+  const { gate } = getMessages();
+  return count >= SEAL_COUNT ? gate.shareAll(BRAND_NAME) : gate.shareSome(BRAND_NAME, count, SEAL_COUNT);
 }
 
 export async function shareSeals(count: number) {
@@ -34,15 +36,17 @@ export async function shareSeals(count: number) {
       return null;
     }
     await navigator.clipboard.writeText(message);
-    return "Metin panoya kopyalandı.";
+    return getMessages().gate.copied;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") return null;
     console.error("Seal share failed", error);
-    return "Paylaşım açılamadı.";
+    return getMessages().gate.shareFailed;
   }
 }
 
 export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
+  const messages = useMessages();
+  const copy = messages.gate;
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [shareNote, setShareNote] = useState<string | null>(null);
@@ -86,16 +90,19 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
           <header className="relative flex flex-col items-center px-5 pt-[max(env(safe-area-inset-top),1.25rem)] text-center">
             <Link
               href="/"
-              aria-label="Kitaba dön"
+              aria-label={copy.back}
               className="focus-ring pointer-events-auto absolute left-3 top-[max(env(safe-area-inset-top),0.75rem)] grid size-11 place-items-center rounded-full text-parchment/85 transition-colors hover:bg-white/5 hover:text-gold-bright"
             >
               <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 5l-7 7 7 7" />
               </svg>
             </Link>
-            <p className="text-micro uppercase text-gold-bright/85">Arcana</p>
-            <h1 className="mt-1.5 font-serif text-3xl text-parchment [text-shadow:0_2px_14px_rgba(0,0,0,0.8)] sm:text-4xl">Mühür Kapısı</h1>
-            <div className="mt-2.5 flex items-center gap-3" role="img" aria-label={`${broken.length} / ${SEAL_COUNT} mühür kırıldı`}>
+            <div className="pointer-events-auto absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)]">
+              <LanguageToggle />
+            </div>
+            <p className="text-micro uppercase text-gold-bright/85">{copy.brand}</p>
+            <h1 className="mt-1.5 font-serif text-3xl text-parchment [text-shadow:0_2px_14px_rgba(0,0,0,0.8)] sm:text-4xl">{copy.title}</h1>
+            <div className="mt-2.5 flex items-center gap-3" role="img" aria-label={copy.progress(broken.length, SEAL_COUNT)}>
               <div className="flex gap-2.5">
                 {Array.from({ length: SEAL_COUNT }, (_, index) => (
                   <span
@@ -121,7 +128,7 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
               className="pointer-events-auto mx-auto flex w-full max-w-lg flex-col items-center gap-3"
             >
               <label htmlFor="seal-text" className="sr-only">
-                Çözdüğün satır
+                {copy.label}
               </label>
               <textarea
                 id="seal-text"
@@ -132,7 +139,7 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
                 }}
                 rows={2}
                 maxLength={400}
-                placeholder="Kadim satırlardan birini çözdüysen buraya yaz…"
+                placeholder={copy.placeholder}
                 aria-invalid={status.kind === "wrong"}
                 aria-describedby="seal-feedback"
                 className={`w-full resize-none rounded-2xl border bg-[#f1e4c5]/[0.08] px-5 py-3.5 font-serif text-lg text-parchment backdrop-blur-sm transition-colors duration-500 placeholder:italic placeholder:text-parchment-dim/75 focus:outline-none focus:ring-2 ${
@@ -146,10 +153,13 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
                 disabled={status.kind === "checking" || text.trim().length === 0}
                 className="btn-gold focus-ring px-10!"
               >
-                {status.kind === "checking" ? "Mühre dokunuluyor…" : "Mührü kır"}
+                {status.kind === "checking" ? copy.checking : copy.submit}
               </button>
             </motion.form>
 
+            {copy.ancientHint && (
+              <p className="mx-auto mt-3 max-w-lg text-center font-serif text-base italic text-parchment/75">{copy.ancientHint}</p>
+            )}
             <div id="seal-feedback" className="pointer-events-auto mt-3 flex min-h-12 flex-col items-center gap-2 text-center" aria-live="polite">
               {status.kind === "wrong" && (
                 <p className="flex items-center gap-2 font-serif text-lg italic text-[#f0a58f]">
@@ -157,25 +167,25 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
                     <path d="M12 3l9.5 17h-19z" />
                     <path d="M12 10v4.5M12 17.5v.01" />
                   </svg>
-                  Mürekkep henüz kurumadı. Satırı yeniden oku.
+                  {copy.wrong}
                 </p>
               )}
               {status.kind === "error" && (
-                <p className="text-sm text-[#f0a58f]">Mühür şu an doğrulanamadı. Biraz sonra yeniden dene.</p>
+                <p className="text-sm text-[#f0a58f]">{copy.error}</p>
               )}
               {status.kind === "broken" && (
                 <>
                   <p className="font-serif text-xl text-gold-bright">
                     {status.fresh
-                      ? `${toRoman(status.index + 1)}. mühür kırıldı.`
-                      : `${toRoman(status.index + 1)}. mühür zaten kırılmıştı.`}
+                      ? copy.broken(toRoman(status.index + 1))
+                      : copy.alreadyBroken(toRoman(status.index + 1))}
                   </p>
                   <button
                     type="button"
                     onClick={async () => setShareNote(await shareSeals(broken.length))}
                     className="btn-ghost focus-ring"
                   >
-                    Kırdığın mühürleri paylaş
+                    {copy.shareSeals}
                   </button>
                   {shareNote && <p className="text-sm text-parchment/80">{shareNote}</p>}
                 </>

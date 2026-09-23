@@ -1,4 +1,5 @@
-import { BRAND_NAME_UPPER, BRAND_TAGLINE } from "@/lib/brand";
+import { BRAND_NAME_UPPER } from "@/lib/brand";
+import { getMessages } from "@/lib/i18n/locale-store";
 import { getSoundStream } from "@/lib/sound";
 import { traceBrandSymbol } from "@/lib/textures/brand-symbol";
 import { getSerifFamily } from "@/lib/textures/page-textures";
@@ -81,7 +82,7 @@ function createOverlay(bookTitle: string) {
 
   ctx.fillStyle = "rgba(239,227,200,0.85)";
   ctx.font = `italic 500 30px ${family}`;
-  ctx.fillText(BRAND_TAGLINE, STORY_WIDTH / 2, STORY_HEIGHT - 110);
+  ctx.fillText(getMessages().tagline, STORY_WIDTH / 2, STORY_HEIGHT - 110);
   const site = process.env.NEXT_PUBLIC_SITE_URL;
   if (site) {
     ctx.fillStyle = "rgba(201,162,75,0.9)";

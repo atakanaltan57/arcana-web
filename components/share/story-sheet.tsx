@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { StoryVideo } from "@/lib/story-recorder";
-import { SHARE_CTA, downloadStory, shareStory, type ShareOutcome, type ShareTarget } from "@/lib/share";
+import { downloadStory, shareStory, type ShareTarget } from "@/lib/share";
+import { useMessages } from "@/lib/i18n/locale-store";
 import { ShareIcon } from "./share-icons";
 
 type StorySheetProps = {
@@ -13,12 +14,8 @@ type StorySheetProps = {
   onClose: () => void;
 };
 
-const OUTCOME_MESSAGES: Record<Exclude<ShareOutcome, "shared" | "cancelled">, string> = {
-  downloaded: "Video indirildi. Telefonundan hikaye olarak yükleyebilirsin.",
-  copied: "Cevap panoya kopyalandı.",
-};
-
 export function StorySheet({ video, target, answer, onClose }: StorySheetProps) {
+  const messages = useMessages();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -50,10 +47,10 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
     setMessage(null);
     try {
       const outcome = await shareStory(video, target, answer);
-      if (outcome === "downloaded" || outcome === "copied") setMessage(OUTCOME_MESSAGES[outcome]);
+      if (outcome === "downloaded" || outcome === "copied") setMessage(messages.story[outcome]);
     } catch (error) {
       console.error("Story share failed", error);
-      setMessage("Paylaşım açılamadı. Videoyu indirip elle paylaşabilirsin.");
+      setMessage(messages.story.failed);
     } finally {
       setBusy(false);
     }
@@ -69,7 +66,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="Hikayeni paylaş"
+      aria-label={messages.story.dialog}
     >
       <motion.div
         className="flex w-full max-w-sm flex-col items-center gap-5 rounded-3xl border border-gold/20 bg-[#0b0c10]/95 p-5 pb-6 shadow-2xl"
@@ -78,7 +75,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
         transition={{ type: "spring", damping: 26, stiffness: 260 }}
         onClick={(event) => event.stopPropagation()}
       >
-        <p className="text-micro uppercase text-gold-bright/85">Hikayen hazır</p>
+        <p className="text-micro uppercase text-gold-bright/85">{messages.story.ready}</p>
 
         {previewUrl ? (
           <video
@@ -101,7 +98,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
           className="btn-gold focus-ring w-full"
         >
           <ShareIcon target={target} className="size-5" />
-          {busy ? "Açılıyor…" : SHARE_CTA[target]}
+          {busy ? messages.story.opening : messages.share.cta[target]}
         </button>
 
         <div className="flex w-full gap-3">
@@ -111,7 +108,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
               onClick={() => downloadStory(video)}
               className="btn-ghost focus-ring min-h-12! flex-1"
             >
-              İndir
+              {messages.story.download}
             </button>
           )}
           <button
@@ -119,7 +116,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
             onClick={onClose}
             className="btn-ghost focus-ring min-h-12! flex-1 border-parchment/25! text-parchment/85!"
           >
-            Kapat
+            {messages.close}
           </button>
         </div>
 

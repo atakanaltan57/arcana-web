@@ -38,21 +38,23 @@ function writeHistory(bookId: string, history: number[], size: number) {
 }
 
 type PickSource = {
+  locale: string;
   bookId: string;
   bookTitle: string;
   answers: string[];
 };
 
-export function pickAnswer({ bookId, bookTitle, answers }: PickSource): PickedAnswer {
+export function pickAnswer({ locale, bookId, bookTitle, answers }: PickSource): PickedAnswer {
   if (answers.length === 0) {
     throw new Error(`Book "${bookId}" has no answers`);
   }
   const historySize = Math.max(1, Math.floor(answers.length * HISTORY_RATIO));
-  const recent = new Set(readHistory(bookId));
+  const historyKey = `${locale}:${bookId}`;
+  const recent = new Set(readHistory(historyKey));
   const pool = answers.map((_, index) => index).filter((index) => !recent.has(index));
   const candidates = pool.length > 0 ? pool : answers.map((_, index) => index);
   const index = candidates[randomInt(candidates.length)];
-  writeHistory(bookId, [...recent, index], historySize);
+  writeHistory(historyKey, [...recent, index], historySize);
   return {
     text: answers[index],
     index,

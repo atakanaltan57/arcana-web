@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ritualMotion } from "@/lib/ritual-store";
-import { SHARE_CTA, SHARE_LABELS, type ShareTarget } from "@/lib/share";
+import { SHARE_LABELS, type ShareTarget } from "@/lib/share";
+import { useMessages } from "@/lib/i18n/locale-store";
 import { ShareIcon } from "./share-icons";
 
 const SHARE_TARGETS: ShareTarget[] = ["instagram", "tiktok", "whatsapp"];
@@ -20,6 +21,7 @@ const stopPointer = (event: React.PointerEvent) => event.stopPropagation();
 
 export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
   const region = useRef<HTMLDivElement>(null);
+  const messages = useMessages();
 
   useEffect(() => {
     let frame = 0;
@@ -58,7 +60,7 @@ export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
       >
         <div className="flex items-center gap-3 text-ink-page/90">
           <span className="h-px w-[clamp(18px,calc(var(--pw)*0.1),48px)] bg-current opacity-60" />
-          <span className="font-serif text-[clamp(15px,calc(var(--pw)*0.048),22px)] font-medium italic">Bu anı story yap</span>
+          <span className="font-serif text-[clamp(15px,calc(var(--pw)*0.048),22px)] font-medium italic">{messages.share.storyHeading}</span>
           <span className="h-px w-[clamp(18px,calc(var(--pw)*0.1),48px)] bg-current opacity-60" />
         </div>
 
@@ -69,7 +71,7 @@ export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
               type="button"
               onClick={onShare(target)}
               onPointerDown={stopPointer}
-              aria-label={SHARE_CTA[target]}
+              aria-label={messages.share.cta[target]}
               className="focus-ring group pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl"
             >
               <span className="grid size-[clamp(46px,calc(var(--pw)*0.13),64px)] place-items-center rounded-full border-[1.5px] border-[#6b4520]/80 bg-[#f6e7c4]/30 text-[#3a220c] shadow-[inset_0_1px_2px_rgba(80,50,20,0.25),0_1px_0_rgba(255,245,220,0.5)] transition-all duration-300 group-hover:scale-105 group-hover:border-[#b8893a] group-hover:bg-[#d9b25e]/40 group-active:scale-95">
@@ -88,7 +90,7 @@ export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
           onPointerDown={stopPointer}
           className="btn-gold focus-ring pointer-events-auto min-h-[clamp(44px,calc(var(--pw)*0.11),52px)]! px-[clamp(22px,calc(var(--pw)*0.09),40px)]! text-[clamp(16px,calc(var(--pw)*0.05),22px)]!"
         >
-          Yeni soru sor
+          {messages.home.askAgain}
         </button>
       </motion.div>
     </div>

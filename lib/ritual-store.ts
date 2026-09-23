@@ -1,5 +1,6 @@
 import { pickAnswer, type PickedAnswer } from "@/lib/answers/pick-answer";
 import { bookStore } from "@/lib/book-store";
+import { getMessages } from "@/lib/i18n/locale-store";
 
 export type RitualPhase = "idle" | "charging" | "opening" | "revealed" | "closing" | "portal" | "departed";
 
@@ -86,7 +87,7 @@ export const ritualStore = {
       emit({ phase: "idle", answer: null });
       return;
     }
-    emit({ phase: "opening", answer: pickAnswer({ bookId: book.id, bookTitle: book.title, answers }) });
+    emit({ phase: "opening", answer: pickAnswer({ locale: getMessages().locale, bookId: book.id, bookTitle: getMessages().books[book.id].title, answers }) });
   },
   reveal() {
     if (snapshot.phase !== "opening") return;

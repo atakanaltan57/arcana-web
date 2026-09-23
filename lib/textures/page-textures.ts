@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { CIPHER_ALPHABET, CIPHER_CORPUS, CIPHER_CRIB_TOKENS, CIPHER_HEADER_TOKENS, toRoman } from "@/lib/cipher";
 import { drawCipherBlock, drawGlyph, drawGlyphRow } from "./cipher-text";
 import { BRAND_NAME_UPPER } from "@/lib/brand";
+import { getMessages } from "@/lib/i18n/locale-store";
 import { traceBrandSymbol } from "./brand-symbol";
 import { canvasToTexture, createCanvas, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
 
@@ -387,8 +388,9 @@ export async function createEpigraphTexture() {
 
   ctx.fillStyle = "rgba(255,0,0,0.8)";
   ctx.font = `italic 500 50px ${family}`;
-  ctx.fillText("Bilinmezin sesi,", w / 2, h * 0.45);
-  ctx.fillText("sırrın mührü.", w / 2, h * 0.45 + 62);
+  const [first, second] = getMessages().epigraph;
+  ctx.fillText(first, w / 2, h * 0.45);
+  ctx.fillText(second, w / 2, h * 0.45 + 62);
 
   ctx.fillStyle = RUBRIC;
   drawFleuron(ctx, w / 2, h * 0.6, 0.55);
