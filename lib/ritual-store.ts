@@ -11,7 +11,9 @@ export const CHARGE_SECONDS = 2.3;
 export const OPENING_SECONDS = 7.6;
 export const UNDERPAGE_HOLD = 4;
 export const CLOSING_SECONDS = 8.3 + UNDERPAGE_HOLD;
-export const PORTAL_SECONDS = 4.6;
+export const PORTAL_SECONDS = 7.6;
+export const PORTAL_GROW_SECONDS = 2.8;
+export const PORTAL_TUNNEL_START = 4.1;
 
 export const ritualMotion = {
   charge: 0,

@@ -290,9 +290,10 @@ export function playPortalRumble(duration: number) {
 export function playTunnel(duration: number) {
   const ctx = getContext();
   if (!ctx) return;
-  noiseLayer(ctx, { type: "bandpass", from: 300, to: 3200, peak: 0.3, attack: duration * 0.8, duration, q: 1.2 });
-  tone(ctx, "sawtooth", 110, 440, 0.04, duration);
-  tone(ctx, "sine", 220, 880, 0.06, duration);
+  noiseLayer(ctx, { type: "lowpass", from: 120, to: 1400, peak: 0.34, attack: duration * 0.85, duration });
+  noiseLayer(ctx, { type: "bandpass", from: 400, to: 1800, peak: 0.08, attack: duration * 0.9, duration, q: 0.7 });
+  tone(ctx, "sine", 36, 58, 0.3, duration);
+  tone(ctx, "sine", 72, 96, 0.05, duration);
 }
 
 export function playArrival() {

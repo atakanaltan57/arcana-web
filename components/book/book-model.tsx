@@ -22,7 +22,9 @@ import {
   CHARGE_SECONDS,
   CLOSING_SECONDS,
   OPENING_SECONDS,
+  PORTAL_GROW_SECONDS,
   PORTAL_SECONDS,
+  PORTAL_TUNNEL_START,
   UNDERPAGE_HOLD,
   ritualMotion,
   ritualStore,
@@ -437,14 +439,14 @@ export function BookModel({ theme }: BookModelProps) {
           motion.tunnel = 1;
           if (t >= 0.4) ritualStore.depart();
         } else {
-          motion.vortex = easeOutCubic(t / 1.3);
-          motion.dive = easeInOutCubic((t - 1.1) / 1.3);
-          motion.tunnel = clamp01((t - 2.4) / 2.2);
-          motion.attract = Math.min(1, t / 0.9);
+          motion.vortex = Math.pow(clamp01(t / PORTAL_GROW_SECONDS), 2.4);
+          motion.dive = easeInOutCubic((t - PORTAL_GROW_SECONDS + 0.4) / 1.5);
+          motion.tunnel = clamp01((t - PORTAL_TUNNEL_START) / (PORTAL_SECONDS - PORTAL_TUNNEL_START - 0.1));
+          motion.attract = Math.min(1, t / 1.6);
           fire = 0.6 + motion.vortex * 0.8;
-          if (t >= 2.35 && !cues.tunnel) {
+          if (t >= PORTAL_TUNNEL_START - 0.05 && !cues.tunnel) {
             cues.tunnel = true;
-            playTunnel(2.4);
+            playTunnel(PORTAL_SECONDS - PORTAL_TUNNEL_START);
           }
           if (t >= PORTAL_SECONDS) ritualStore.depart();
         }

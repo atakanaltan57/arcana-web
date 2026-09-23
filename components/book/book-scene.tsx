@@ -58,6 +58,7 @@ function CameraRig() {
       const shake = Math.sin(state.clock.elapsedTime * 43) * 0.05 * travel;
       camera.position.set(TUNNEL_ORIGIN[0] + shake, TUNNEL_ORIGIN[1] + shake * 0.6, TUNNEL_ORIGIN[2] + 1 - travel * travel * 60);
       camera.lookAt(TUNNEL_ORIGIN[0], TUNNEL_ORIGIN[1], camera.position.z - 20);
+      camera.rotateZ(travel * travel * 0.9 + Math.sin(state.clock.elapsedTime * 0.7) * 0.04);
       perspective.fov = 70 + travel * 25;
       perspective.updateProjectionMatrix();
       return;

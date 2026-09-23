@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Effect } from "postprocessing";
 import * as THREE from "three";
 import { ritualMotion } from "@/lib/ritual-store";
+import { blackHoleScale } from "./wormhole";
 
 const lensFragment = /* glsl */ `
   uniform vec2 uCenter;
@@ -62,7 +63,7 @@ export function LensTracker({ effect, center, horizonRadius }: LensTrackerProps)
       strength.value = 0;
       return;
     }
-    const worldRadius = horizonRadius * (0.2 + vortex * 5.2);
+    const worldRadius = horizonRadius * blackHoleScale(vortex);
     scratch.center.set(...center).project(camera);
     scratch.edge.set(center[0] + worldRadius, center[1], center[2]).project(camera);
     const cx = (scratch.center.x + 1) / 2;

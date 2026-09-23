@@ -15,7 +15,7 @@ export function PortalVeil({ hold }: PortalVeilProps) {
     const tick = () => {
       if (veil.current) {
         const t = ritualMotion.tunnel;
-        const k = hold ? 1 : Math.min(1, Math.max(0, (t - 0.72) / 0.28));
+        const k = hold ? 1 : Math.min(1, Math.max(0, (t - 0.84) / 0.16));
         veil.current.style.opacity = String(k * k);
       }
       frame = requestAnimationFrame(tick);

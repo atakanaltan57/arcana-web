@@ -7,6 +7,8 @@ import { DOOR_HEIGHT, GATE } from "@/lib/gate-layout";
 import { easeInOutCubic } from "@/lib/easing";
 import { usePbrTextures } from "@/lib/textures/pbr";
 import { createSymbolMask } from "@/lib/textures/stone-textures";
+import { createGemGeometry } from "@/lib/gem-geometry";
+import { createGemMaterial, setGemAwakening } from "./seal-socket";
 
 export const DOOR_OPEN_MS = 3800;
 const DOOR_THICKNESS = 0.16;
@@ -17,6 +19,7 @@ const IRON_REPEAT: [number, number] = [2.5, 0.25];
 const SEAL_SIZE = 2.35;
 const SEAL_CENTER_Y = 3.05;
 const BAND_HEIGHTS = [0.75, 4.42];
+const GEM_Y = SEAL_CENTER_Y + 0.018;
 
 function doorGeometry(side: -1 | 1) {
   const shape = new THREE.Shape();
@@ -55,6 +58,8 @@ type DoorLeafProps = {
   side: -1 | 1;
   geometry: THREE.BufferGeometry;
   sealGeometry: THREE.BufferGeometry;
+  gemGeometry: THREE.BufferGeometry;
+  gem: THREE.Material;
   wood: THREE.Material;
   iron: THREE.Material;
   gold: THREE.Material;
@@ -63,7 +68,7 @@ type DoorLeafProps = {
   mount: THREE.BufferGeometry;
 };
 
-function DoorLeaf({ side, geometry, sealGeometry, wood, iron, gold, band, ring, mount }: DoorLeafProps) {
+function DoorLeaf({ side, geometry, sealGeometry, gemGeometry, gem, wood, iron, gold, band, ring, mount }: DoorLeafProps) {
   const inward = -side;
   const front = DOOR_THICKNESS / 2 + 0.012;
   return (
@@ -73,6 +78,7 @@ function DoorLeaf({ side, geometry, sealGeometry, wood, iron, gold, band, ring, 
         <mesh key={y} geometry={band} material={iron} position={[inward * HALF * 0.5, y, front + 0.012]} />
       ))}
       <mesh geometry={sealGeometry} material={gold} position={[inward * (HALF - SEAL_SIZE / 4), SEAL_CENTER_Y, front + 0.004]} />
+      <mesh geometry={gemGeometry} material={gem} position={[inward * HALF, GEM_Y, front + 0.006]} />
       <mesh geometry={mount} material={iron} position={[inward * (HALF - 0.45), 1.5, front + 0.02]} rotation={[Math.PI / 2, 0, 0]} />
       <mesh geometry={ring} material={iron} position={[inward * (HALF - 0.45), 1.28, front + 0.05]} />
     </>
@@ -81,9 +87,10 @@ function DoorLeaf({ side, geometry, sealGeometry, wood, iron, gold, band, ring, 
 
 type GateDoorsProps = {
   openAt: number | null;
+  awakened: number;
 };
 
-export function GateDoors({ openAt }: GateDoorsProps) {
+export function GateDoors({ openAt, awakened }: GateDoorsProps) {
   const left = useRef<THREE.Group>(null);
   const right = useRef<THREE.Group>(null);
   const glow = useRef<THREE.Mesh>(null);
@@ -120,6 +127,10 @@ export function GateDoors({ openAt }: GateDoorsProps) {
     });
     const leftGeometry = doorGeometry(-1);
     const rightGeometry = doorGeometry(1);
+    const gem = createGemMaterial();
+    gem.side = THREE.DoubleSide;
+    const leftGem = createGemGeometry({ width: 0.09, height: 0.235, depth: 0.1, half: -1 });
+    const rightGem = createGemGeometry({ width: 0.09, height: 0.235, depth: 0.1, half: 1 });
     const leftSeal = sealHalfGeometry(-1);
     const rightSeal = sealHalfGeometry(1);
     const band = new THREE.BoxGeometry(HALF, 0.24, 0.035);
@@ -157,6 +168,9 @@ export function GateDoors({ openAt }: GateDoorsProps) {
       wood,
       iron,
       gold,
+      gem,
+      leftGem,
+      rightGem,
       leftGeometry,
       rightGeometry,
       leftSeal,
@@ -168,8 +182,8 @@ export function GateDoors({ openAt }: GateDoorsProps) {
       beyondMaterial,
       dispose: () => {
         mask.dispose();
-        [wood, iron, gold, beyondMaterial].forEach((material) => material.dispose());
-        [leftGeometry, rightGeometry, leftSeal, rightSeal, band, ring, mount, beyond].forEach((geometry) =>
+        [wood, iron, gold, gem, beyondMaterial].forEach((material) => material.dispose());
+        [leftGeometry, rightGeometry, leftGem, rightGem, leftSeal, rightSeal, band, ring, mount, beyond].forEach((geometry) =>
           geometry.dispose(),
         );
       },
@@ -190,6 +204,8 @@ export function GateDoors({ openAt }: GateDoorsProps) {
       right.current.rotation.y = -swing;
       right.current.position.x = HALF - shake;
     }
+    const gemPulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 1.1);
+    setGemAwakening(assets.gem, Math.max(awakened * 0.45, progress), gemPulse);
     assets.gold.emissiveIntensity = 0.12 + Math.sin(clock.elapsedTime * 1.2) * 0.05 + progress * 1.8;
     if (glow.current) glow.current.visible = progress > 0.05;
     assets.beyondMaterial.uniforms.uTime.value = clock.elapsedTime;
@@ -197,15 +213,15 @@ export function GateDoors({ openAt }: GateDoorsProps) {
     if (light.current) light.current.intensity = progress * 60;
   });
 
-  const shared = { wood: assets.wood, iron: assets.iron, gold: assets.gold, band: assets.band, ring: assets.ring, mount: assets.mount };
+  const shared = { gem: assets.gem, wood: assets.wood, iron: assets.iron, gold: assets.gold, band: assets.band, ring: assets.ring, mount: assets.mount };
 
   return (
     <group>
       <group ref={left} position={[-HALF, 0, 0]}>
-        <DoorLeaf side={-1} geometry={assets.leftGeometry} sealGeometry={assets.leftSeal} {...shared} />
+        <DoorLeaf side={-1} geometry={assets.leftGeometry} sealGeometry={assets.leftSeal} gemGeometry={assets.leftGem} {...shared} />
       </group>
       <group ref={right} position={[HALF, 0, 0]}>
-        <DoorLeaf side={1} geometry={assets.rightGeometry} sealGeometry={assets.rightSeal} {...shared} />
+        <DoorLeaf side={1} geometry={assets.rightGeometry} sealGeometry={assets.rightSeal} gemGeometry={assets.rightGem} {...shared} />
       </group>
       <mesh ref={glow} geometry={assets.beyond} material={assets.beyondMaterial} position={[0, DOOR_HEIGHT / 2, -1.6]} visible={false} />
       <pointLight ref={light} position={[0, 3, -0.8]} color="#ffd79a" intensity={0} decay={2} />

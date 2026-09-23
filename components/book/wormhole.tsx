@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { ritualMotion } from "@/lib/ritual-store";
-import { TUNNEL_LENGTH, TUNNEL_ORIGIN, TUNNEL_RADIUS } from "@/lib/scene-constants";
 
 const noise = /* glsl */ `
   float wHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -80,28 +79,101 @@ const vortexFragment = /* glsl */ `
   }
 `;
 
+const tunnelVertex = /* glsl */ `
+  varying vec3 vDir;
+  void main() {
+    vDir = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
 const tunnelFragment = /* glsl */ `
   uniform float uTime;
   uniform float uPhase;
-  varying vec2 vUv;
+  uniform float uTravel;
+  uniform float uSpeed;
+  varying vec3 vDir;
   ${noise}
+
+  const float TAU = 6.2831853;
+
+  float starLayer(vec2 q, vec2 cells, float seed, float stretch) {
+    vec2 g = q * cells;
+    vec2 id = floor(g);
+    vec2 f = fract(g) - 0.5;
+    float h = wHash(id + seed);
+    if (h < 0.86) return 0.0;
+    vec2 offset = (vec2(wHash(id + seed + 3.1), wHash(id + seed + 7.7)) - 0.5) * 0.6;
+    vec2 d = f - offset;
+    d.y /= stretch;
+    float core = exp(-dot(d, d) * 90.0);
+    float halo = exp(-dot(d, d) * 14.0) * 0.12;
+    return (core + halo) * pow((h - 0.86) / 0.14, 3.0);
+  }
+
+  float starfield(vec2 q, float stretch) {
+    float s = starLayer(q, vec2(140.0, 5.0), 0.0, stretch);
+    s += starLayer(q + vec2(0.37, 0.21), vec2(90.0, 3.2), 17.0, stretch) * 1.8;
+    s += starLayer(q + vec2(0.11, 0.63), vec2(220.0, 8.0), 41.0, stretch) * 0.6;
+    return s;
+  }
+
   void main() {
-    float around = vUv.x + vUv.y * 1.6 + uTime * 0.12;
-    float along = vUv.y * 60.0 + uPhase;
-    vec2 cell = vec2(floor(around * 90.0), floor(along));
-    float star = step(0.93, wHash(cell));
-    float streak = star * smoothstep(0.0, 0.5, fract(along)) * (1.0 - smoothstep(0.5, 1.0, fract(along)));
-    streak *= 1.0 - smoothstep(0.2, 0.5, abs(fract(around * 90.0) - 0.5));
-    float ring = 6.2831853 * (vUv.x + vUv.y * 1.6 + uTime * 0.12);
-    float nebula = 0.5 * (wFbm(vec2(sin(ring) * 2.0 + 3.0, vUv.y * 8.0 + uTime * 0.6)) + wFbm(vec2(cos(ring) * 2.0 + 7.0, vUv.y * 8.0 - uTime * 0.4)));
-    vec3 color = mix(vec3(0.03, 0.04, 0.16), vec3(0.28, 0.2, 0.55), nebula);
-    color += vec3(0.9, 0.6, 0.25) * pow(nebula, 3.0) * 1.4;
-    color += vec3(3.4, 2.4, 1.1) * streak;
-    float depthGlow = smoothstep(0.2, 1.0, vUv.y);
-    color += vec3(1.6, 1.3, 0.9) * pow(depthGlow, 6.0);
+    vec3 d = normalize(vDir);
+    float theta = atan(length(d.xy), -d.z);
+    float phi = atan(d.y, d.x);
+
+    float exitRadius = mix(0.035, 1.35, pow(uTravel, 3.2));
+    float nearThroat = exp(-max(theta - exitRadius, 0.0) * 3.2);
+    float twist = uTime * 0.04 + 1.1 * nearThroat;
+    float u = fract((phi + twist) / TAU);
+    float depth = 1.0 / max(tan(theta * 0.5), 1e-3);
+    float v = depth * 0.55 + uPhase;
+
+    float stretch = 1.0 + uSpeed * 9.0;
+    float aberration = 0.003 + uSpeed * 0.014;
+    vec3 stars = vec3(
+      starfield(vec2(u, v + aberration), stretch),
+      starfield(vec2(u, v), stretch),
+      starfield(vec2(u, v - aberration), stretch)
+    );
+    stars *= vec3(0.95, 0.97, 1.08);
+
+    vec2 wall = vec2(cos(phi + twist), sin(phi + twist)) * 1.6;
+    float dust = wFbm(wall + vec2(v * 0.22, -v * 0.15));
+    float gas = wFbm(wall * 1.7 + vec2(-v * 0.35 + 11.0, v * 0.12 + 5.0));
+    float lanes = smoothstep(0.35, 0.75, wFbm(wall * 3.1 + vec2(v * 0.6, 2.0)));
+    vec3 color = vec3(0.012, 0.014, 0.024);
+    color += vec3(0.09, 0.11, 0.2) * pow(gas, 2.2) * 0.9;
+    color += vec3(0.38, 0.22, 0.11) * pow(dust, 3.0) * 0.8;
+    color *= 1.0 - lanes * 0.75;
+    color += stars * (1.0 - lanes * 0.6) * 2.4;
+
+    float spill = exp(-max(theta - exitRadius, 0.0) * 5.0);
+    color += vec3(1.0, 0.62, 0.3) * spill * (0.25 + uTravel * 0.6);
+
+    float ringWidth = 0.004 + exitRadius * 0.01;
+    vec3 ring = vec3(
+      exp(-pow((theta - exitRadius * 1.02) / ringWidth, 2.0)),
+      exp(-pow((theta - exitRadius * 1.03) / ringWidth, 2.0)),
+      exp(-pow((theta - exitRadius * 1.04) / ringWidth, 2.0))
+    );
+    color += ring * vec3(1.3, 1.15, 1.0) * (0.6 + 0.4 * wFbm(vec2(phi * 4.0, uTime)));
+
+    float inside = 1.0 - smoothstep(exitRadius * 0.45, exitRadius * 1.0, theta);
+    float haze = wFbm(vec2(cos(phi) * 3.0 + theta * 9.0, sin(phi) * 3.0 - uTime * 0.25));
+    float core = exp(-theta / max(exitRadius, 1e-3) * 2.2);
+    vec3 beyond = mix(vec3(0.75, 0.46, 0.24), vec3(1.7, 1.42, 1.1), core);
+    beyond *= 0.7 + haze * 0.55;
+    color = mix(color, color * 0.35 + beyond, inside);
+
     gl_FragColor = vec4(color, 1.0);
   }
 `;
+
+export function blackHoleScale(vortex: number) {
+  return 0.04 + vortex * 5.36;
+}
 
 type VortexDiscProps = {
   position: [number, number, number];
@@ -132,10 +204,10 @@ export function VortexDisc({ position }: VortexDiscProps) {
   useFrame(({ clock }) => {
     const open = ritualMotion.vortex;
     material.uniforms.uTime.value = clock.elapsedTime;
-    material.uniforms.uOpen.value = Math.min(1, open * 1.6);
+    material.uniforms.uOpen.value = Math.min(1, 0.45 + open * 3);
     if (mesh.current) {
-      mesh.current.visible = open > 0.001;
-      const size = 0.2 + open * 5.2;
+      mesh.current.visible = open > 0;
+      const size = blackHoleScale(open);
       mesh.current.scale.set(size, 1, size);
     }
   });
@@ -146,15 +218,14 @@ export function VortexDisc({ position }: VortexDiscProps) {
 export function WormholeTunnel() {
   const mesh = useRef<THREE.Mesh>(null);
   const { geometry, material } = useMemo(() => {
-    const geo = new THREE.CylinderGeometry(TUNNEL_RADIUS * 0.35, TUNNEL_RADIUS, TUNNEL_LENGTH, 64, 1, true).rotateX(
-      -Math.PI / 2,
-    );
+    const geo = new THREE.SphereGeometry(30, 64, 32);
     const mat = new THREE.ShaderMaterial({
-      vertexShader: passVertex,
+      vertexShader: tunnelVertex,
       fragmentShader: tunnelFragment,
-      uniforms: { uTime: { value: 0 }, uPhase: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uPhase: { value: 0 }, uTravel: { value: 0 }, uSpeed: { value: 0 } },
       side: THREE.BackSide,
       depthWrite: false,
+      depthTest: false,
     });
     return { geometry: geo, material: mat };
   }, []);
@@ -167,21 +238,18 @@ export function WormholeTunnel() {
     [geometry, material],
   );
 
-  useFrame(({ clock }, delta) => {
+  useFrame(({ clock, camera }, delta) => {
     const tunnel = ritualMotion.tunnel;
+    const speed = Math.min(1, 0.15 + tunnel * tunnel * 1.1);
     material.uniforms.uTime.value = clock.elapsedTime;
-    material.uniforms.uPhase.value += delta * (6 + tunnel * tunnel * 40);
-    if (mesh.current) mesh.current.visible = tunnel > 0;
+    material.uniforms.uTravel.value = tunnel;
+    material.uniforms.uSpeed.value = speed;
+    material.uniforms.uPhase.value += delta * (0.6 + speed * speed * 7);
+    if (mesh.current) {
+      mesh.current.visible = tunnel > 0;
+      mesh.current.position.copy(camera.position);
+    }
   });
 
-  return (
-    <mesh
-      ref={mesh}
-      geometry={geometry}
-      material={material}
-      position={[TUNNEL_ORIGIN[0], TUNNEL_ORIGIN[1], TUNNEL_ORIGIN[2] - TUNNEL_LENGTH / 2]}
-      frustumCulled={false}
-      visible={false}
-    />
-  );
+  return <mesh ref={mesh} geometry={geometry} material={material} renderOrder={-10} frustumCulled={false} visible={false} />;
 }

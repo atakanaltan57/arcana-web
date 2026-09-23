@@ -1,17 +1,5 @@
-import { alphaField, canvasToTexture, createCanvas, heightToNormalCanvas, seededRandom, softenCanvas } from "./procedural";
+import { canvasToTexture, createCanvas, seededRandom, softenCanvas } from "./procedural";
 import { traceBrandSymbol } from "./brand-symbol";
-
-export function createWaxSealEmboss() {
-  const size = 256;
-  const { canvas, ctx } = createCanvas(size, size);
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = "#fff";
-  ctx.strokeStyle = "#fff";
-  traceBrandSymbol(ctx, size / 2, size / 2, size * 0.8);
-  const texture = canvasToTexture(canvas, false);
-  return texture;
-}
 
 export function createNumeralTexture(text: string) {
   const { canvas, ctx } = createCanvas(128, 64);
@@ -40,27 +28,45 @@ export function createSymbolMask(size: number, ring: boolean) {
   return canvasToTexture(canvas, false);
 }
 
-export function createWaxSealNormal(discFraction: number) {
-  const size = 512;
-  const symbolCanvas = createCanvas(size, size);
-  symbolCanvas.ctx.fillStyle = "#fff";
-  symbolCanvas.ctx.strokeStyle = "#fff";
-  traceBrandSymbol(symbolCanvas.ctx, size / 2, size / 2, size * discFraction * 1.25);
-  const symbol = alphaField(softenCanvas(symbolCanvas.canvas, 3));
-  const rand = seededRandom(313);
-  const heightField = new Float32Array(size * size);
-  const discRadius = size * discFraction;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const i = y * size + x;
-      const r = Math.hypot(x - size / 2, y - size / 2) / discRadius;
-      const dome = Math.sqrt(Math.max(0, 1 - Math.min(1, r) ** 2)) * 0.35;
-      const pressed = r < 0.74 ? -0.25 : 0;
-      const rim = Math.max(0, 1 - Math.abs(r - 0.82) / 0.1) * 0.3;
-      const wobble = (rand() - 0.5) * 0.015;
-      heightField[i] = dome + pressed + rim + symbol[i] * 0.32 * (r < 0.74 ? 1 : 0) + wobble;
+export function createGemCrackTexture(seed: number) {
+  const size = 256;
+  const { canvas, ctx } = createCanvas(size, size);
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = "#fff";
+  ctx.lineCap = "round";
+  const rand = seededRandom(seed);
+  const crack = (x: number, y: number, angle: number, length: number, width: number, depth: number) => {
+    let px = x;
+    let py = y;
+    let heading = angle;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    const steps = Math.max(2, Math.round(length / 9));
+    for (let i = 0; i < steps; i++) {
+      heading += (rand() - 0.5) * 0.7;
+      px += Math.cos(heading) * (length / steps);
+      py += Math.sin(heading) * (length / steps);
+      ctx.lineTo(px, py);
+      if (depth > 0 && rand() < 0.22) {
+        ctx.stroke();
+        crack(px, py, heading + (rand() < 0.5 ? -1 : 1) * (0.5 + rand() * 0.6), length * 0.45, width * 0.6, depth - 1);
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+      }
     }
+    ctx.stroke();
+  };
+  const origin = { x: size * (0.45 + rand() * 0.1), y: size * (0.42 + rand() * 0.16) };
+  const arms = 5 + Math.floor(rand() * 3);
+  for (let i = 0; i < arms; i++) {
+    crack(origin.x, origin.y, (i / arms) * Math.PI * 2 + rand() * 0.6, size * (0.3 + rand() * 0.25), 3.2, 2);
   }
-  const texture = canvasToTexture(heightToNormalCanvas(heightField, size, size, 6), false);
-  return texture;
+  const soft = softenCanvas(canvas, 4);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.drawImage(soft, 0, 0);
+  ctx.globalCompositeOperation = "source-over";
+  return canvasToTexture(canvas, false);
 }

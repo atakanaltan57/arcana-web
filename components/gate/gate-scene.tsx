@@ -9,7 +9,6 @@ import * as THREE from "three";
 import { GATE, sealPlacement } from "@/lib/gate-layout";
 import { SEAL_COUNT } from "@/lib/seals";
 import { clamp01, easeInOutCubic } from "@/lib/easing";
-import { createWaxSealEmboss } from "@/lib/textures/stone-textures";
 import { GateArchitecture } from "./gate-architecture";
 import { DOOR_OPEN_MS, GateDoors } from "./gate-doors";
 import { SealSocket, useSealAssets } from "./seal-socket";
@@ -153,9 +152,7 @@ function ReadySignal({ onReady }: { onReady: () => void }) {
 }
 
 function Seals({ broken, breaking }: Pick<GateSceneProps, "broken" | "breaking">) {
-  const emboss = useMemo(() => createWaxSealEmboss(), []);
-  useEffect(() => () => emboss.dispose(), [emboss]);
-  const assets = useSealAssets(emboss);
+  const assets = useSealAssets();
   return (
     <>
       {Array.from({ length: SEAL_COUNT }, (_, index) => (
@@ -207,7 +204,7 @@ export default function GateScene({ broken, breaking, openAt, dimAt, onReady }: 
 
       <Suspense fallback={null}>
         <GateArchitecture />
-        <GateDoors openAt={openAt} />
+        <GateDoors openAt={openAt} awakened={broken.length / SEAL_COUNT} />
         <Seals broken={broken} breaking={breaking} />
         <Torch position={[-(GATE.archOuter + 0.6), torchY, -0.33]} dimAt={dimAt} seed={1} />
         <Torch position={[GATE.archOuter + 0.6, torchY, -0.33]} dimAt={dimAt} seed={2} />

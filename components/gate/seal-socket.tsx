@@ -7,114 +7,92 @@ import * as THREE from "three";
 import { toRoman } from "@/lib/cipher";
 import { sealPlacement } from "@/lib/gate-layout";
 import { clamp01, easeOutCubic } from "@/lib/easing";
-import { createNumeralTexture, createWaxSealNormal } from "@/lib/textures/stone-textures";
+import { createGemBezelGeometry, createGemGeometry } from "@/lib/gem-geometry";
+import { createGemCrackTexture, createNumeralTexture } from "@/lib/textures/stone-textures";
 import { starFragmentShader, starVertexShader } from "@/components/book/starburst";
 
 export const SEAL_BREAK_MS = 1600;
-const RADIUS = 0.34;
+const GEM_WIDTH = 0.14;
+const GEM_HEIGHT = 0.31;
+const GEM_DEPTH = 0.13;
+const SHARD_COUNT = 14;
+const CRACK_AT = 0.3;
 
-function waxShape(from: number, to: number, jagged: boolean) {
-  const shape = new THREE.Shape();
-  const steps = 48;
-  for (let i = 0; i <= steps; i++) {
-    const a = from + ((to - from) * i) / steps;
-    const r = RADIUS * (1 + 0.07 * Math.sin(a * 5 + 0.7) + 0.04 * Math.sin(a * 11 + 2.1));
-    if (i === 0) shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
-    else shape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-  }
-  if (jagged) {
-    const cuts = 6;
-    for (let i = 1; i < cuts; i++) {
-      const y = Math.sin(to) * RADIUS * (1 - (2 * i) / cuts);
-      shape.lineTo((i % 2 === 0 ? 0.03 : -0.03) * (to > Math.PI ? 1 : -1), y);
-    }
-  }
-  shape.closePath();
-  return shape;
+const DORMANT_COLOR = new THREE.Color("#6a0f1a");
+const DORMANT_EMISSIVE = new THREE.Color("#5a0610");
+const AWAKE_COLOR = new THREE.Color("#e8a93a");
+const AWAKE_EMISSIVE = new THREE.Color("#ff9326");
+
+export function createGemMaterial() {
+  return new THREE.MeshPhysicalMaterial({
+    color: DORMANT_COLOR.clone(),
+    roughness: 0.05,
+    metalness: 0,
+    clearcoat: 1,
+    clearcoatRoughness: 0.03,
+    ior: 2.2,
+    specularIntensity: 1,
+    specularColor: new THREE.Color("#ffe2c8"),
+    iridescence: 0.3,
+    iridescenceIOR: 1.6,
+    emissive: DORMANT_EMISSIVE.clone(),
+    emissiveIntensity: 0.45,
+    envMapIntensity: 2.4,
+    flatShading: true,
+  });
 }
 
-function waxGeometry(shape: THREE.Shape) {
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.05,
-    bevelEnabled: true,
-    bevelThickness: 0.025,
-    bevelSize: 0.03,
-    bevelSegments: 3,
-    curveSegments: 12,
-  });
-  const positions = geometry.attributes.position;
-  const uvs = geometry.attributes.uv;
-  for (let i = 0; i < positions.count; i++) {
-    uvs.setXY(i, (positions.getX(i) + RADIUS * 1.2) / (RADIUS * 2.4), (positions.getY(i) + RADIUS * 1.2) / (RADIUS * 2.4));
-  }
-  return geometry;
+export function setGemAwakening(material: THREE.MeshPhysicalMaterial, awake: number, pulse: number) {
+  material.color.copy(DORMANT_COLOR).lerp(AWAKE_COLOR, awake);
+  material.emissive.copy(DORMANT_EMISSIVE).lerp(AWAKE_EMISSIVE, awake);
+  material.emissiveIntensity = THREE.MathUtils.lerp(0.35 + pulse * 0.25, 1.25 + pulse * 0.35, awake);
 }
 
 type SealAssets = {
-  whole: THREE.ExtrudeGeometry;
-  leftHalf: THREE.ExtrudeGeometry;
-  rightHalf: THREE.ExtrudeGeometry;
-  wax: THREE.MeshPhysicalMaterial;
-  glow: THREE.MeshBasicMaterial;
-  hollow: THREE.MeshStandardMaterial;
-  socket: THREE.PlaneGeometry;
-  hollowDisc: THREE.CircleGeometry;
+  gem: THREE.BufferGeometry;
+  crackShell: THREE.BufferGeometry;
+  bezel: THREE.ExtrudeGeometry;
+  shard: THREE.TetrahedronGeometry;
+  gold: THREE.MeshStandardMaterial;
+  shardMaterial: THREE.MeshPhysicalMaterial;
   numeralPlane: THREE.PlaneGeometry;
   flare: THREE.PlaneGeometry;
   dispose: () => void;
 };
 
-export function useSealAssets(emboss: THREE.Texture): SealAssets {
+export function useSealAssets(): SealAssets {
   const assets = useMemo(() => {
-    const whole = waxGeometry(waxShape(0, Math.PI * 2, false));
-    const leftHalf = waxGeometry(waxShape(Math.PI / 2, (Math.PI * 3) / 2, true));
-    const rightHalf = waxGeometry(waxShape(-Math.PI / 2, Math.PI / 2, true));
-    const waxNormal = createWaxSealNormal(1 / 2.4);
-    const wax = new THREE.MeshPhysicalMaterial({
-      color: "#8e1a15",
-      roughness: 0.32,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.22,
-      normalMap: waxNormal,
-      normalScale: new THREE.Vector2(1.4, 1.4),
-      sheen: 0.45,
-      sheenRoughness: 0.4,
-      sheenColor: new THREE.Color("#e0664a"),
-      emissive: new THREE.Color("#3a0604"),
-      emissiveIntensity: 0.35,
+    const gem = createGemGeometry({ width: GEM_WIDTH, height: GEM_HEIGHT, depth: GEM_DEPTH });
+    const crackShell = createGemGeometry({ width: GEM_WIDTH * 1.01, height: GEM_HEIGHT * 1.01, depth: GEM_DEPTH * 1.03 });
+    const bezel = createGemBezelGeometry(GEM_WIDTH, GEM_HEIGHT, 0.045, 0.03);
+    const shard = new THREE.TetrahedronGeometry(0.035);
+    const gold = new THREE.MeshStandardMaterial({ color: "#b08840", metalness: 1, roughness: 0.34, envMapIntensity: 1.6 });
+    const shardMaterial = new THREE.MeshPhysicalMaterial({
+      color: DORMANT_COLOR,
+      roughness: 0.08,
+      clearcoat: 1,
+      emissive: new THREE.Color("#ff7a2a"),
+      emissiveIntensity: 0.9,
+      flatShading: true,
     });
-    const glow = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(2.4, 1.55, 0.55),
-      alphaMap: emboss,
-      transparent: true,
-      depthWrite: false,
-      toneMapped: false,
-    });
-    const hollow = new THREE.MeshStandardMaterial({ color: "#1a120a", roughness: 0.9, emissive: new THREE.Color("#5a3510"), emissiveIntensity: 0.6 });
-    const socket = new THREE.PlaneGeometry(RADIUS * 1.9, RADIUS * 1.9);
-    const hollowDisc = new THREE.CircleGeometry(RADIUS * 0.95, 40);
     const numeralPlane = new THREE.PlaneGeometry(0.32, 0.16);
     const flare = new THREE.PlaneGeometry(1.6, 1.6);
     return {
-      whole,
-      leftHalf,
-      rightHalf,
-      wax,
-      glow,
-      hollow,
-      socket,
-      hollowDisc,
+      gem,
+      crackShell,
+      bezel,
+      shard,
+      gold,
+      shardMaterial,
       numeralPlane,
       flare,
       dispose: () => {
-        [whole, leftHalf, rightHalf, socket, hollowDisc, numeralPlane, flare].forEach((geometry) => geometry.dispose());
-        wax.dispose();
-        waxNormal.dispose();
-        glow.dispose();
-        hollow.dispose();
+        [gem, crackShell, bezel, shard, numeralPlane, flare].forEach((geometry) => geometry.dispose());
+        gold.dispose();
+        shardMaterial.dispose();
       },
     };
-  }, [emboss]);
+  }, []);
   useEffect(() => assets.dispose, [assets]);
   return assets;
 }
@@ -128,16 +106,31 @@ type SealSocketProps = {
 
 export function SealSocket({ index, broken, breakAt, assets }: SealSocketProps) {
   const placement = sealPlacement(index);
-  const left = useRef<THREE.Mesh>(null);
-  const right = useRef<THREE.Mesh>(null);
-  const whole = useRef<THREE.Mesh>(null);
-  const socket = useRef<THREE.Group>(null);
+  const gemGroup = useRef<THREE.Group>(null);
+  const shards = useRef<THREE.InstancedMesh>(null);
   const flareMesh = useRef<THREE.Mesh>(null);
+  const scratch = useMemo(() => new THREE.Object3D(), []);
 
-  const { numeralMaterial, flareMaterial } = useMemo(() => {
-    const texture = createNumeralTexture(toRoman(index + 1));
+  const { gemMaterial, crackMaterial, numeralMaterial, flareMaterial, shardSeeds } = useMemo(() => {
+    const numeral = createNumeralTexture(toRoman(index + 1));
+    const crack = createGemCrackTexture(900 + index * 37);
+    const seeds = Array.from({ length: SHARD_COUNT }, (_, i) => {
+      const angle = (i / SHARD_COUNT) * Math.PI * 2 + Math.sin(index * 13 + i * 7) * 0.4;
+      const speed = 0.7 + ((Math.sin(index * 5 + i * 11) + 1) / 2) * 0.8;
+      return { angle, speed, lift: 0.4 + ((Math.cos(i * 3 + index) + 1) / 2) * 0.6, spin: 4 + (i % 5) * 2 };
+    });
     return {
-      numeralMaterial: new THREE.MeshBasicMaterial({ map: texture, color: "#c9a25a", transparent: true, opacity: 0.7 }),
+      gemMaterial: createGemMaterial(),
+      crackMaterial: new THREE.MeshBasicMaterial({
+        color: new THREE.Color(3.2, 2.1, 0.9),
+        alphaMap: crack,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      }),
+      numeralMaterial: new THREE.MeshBasicMaterial({ map: numeral, color: "#c9a25a", transparent: true, opacity: 0.7 }),
       flareMaterial: new THREE.ShaderMaterial({
         vertexShader: starVertexShader,
         fragmentShader: starFragmentShader,
@@ -146,58 +139,82 @@ export function SealSocket({ index, broken, breakAt, assets }: SealSocketProps) 
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       }),
+      shardSeeds: seeds,
     };
   }, [index]);
 
   useEffect(
     () => () => {
+      gemMaterial.dispose();
+      crackMaterial.alphaMap?.dispose();
+      crackMaterial.dispose();
       numeralMaterial.map?.dispose();
       numeralMaterial.dispose();
       flareMaterial.dispose();
     },
-    [numeralMaterial, flareMaterial],
+    [gemMaterial, crackMaterial, numeralMaterial, flareMaterial],
   );
 
   useFrame(({ clock }) => {
+    const time = clock.elapsedTime;
     const elapsed = breakAt === null ? SEAL_BREAK_MS : performance.now() - breakAt;
     const progress = broken ? clamp01(elapsed / SEAL_BREAK_MS) : 0;
-    const split = easeOutCubic(clamp01((progress - 0.25) / 0.75));
-    const tremor = broken && progress < 0.25 ? Math.sin(clock.elapsedTime * 70) * 0.012 : 0;
+    const cracking = clamp01(progress / CRACK_AT);
+    const awake = easeOutCubic(clamp01((progress - CRACK_AT) / (1 - CRACK_AT)));
+    const pulse = 0.5 + 0.5 * Math.sin(time * (broken ? 1.7 : 0.9) + index * 1.3);
 
-    if (whole.current) {
-      whole.current.visible = !broken || progress < 0.25;
-      whole.current.position.x = tremor;
+    setGemAwakening(gemMaterial, awake, pulse);
+    crackMaterial.opacity = broken ? cracking * (1 - awake * 0.55) : 0;
+
+    if (gemGroup.current) {
+      const tremor = broken && progress < CRACK_AT ? Math.sin(time * 80) * 0.01 * cracking : 0;
+      const pop = broken && progress >= CRACK_AT ? 1 + Math.sin(Math.PI * clamp01((progress - CRACK_AT) / 0.25)) * 0.14 : 1;
+      gemGroup.current.position.x = tremor;
+      gemGroup.current.scale.setScalar(pop);
     }
-    for (const [mesh, side] of [
-      [left.current, -1],
-      [right.current, 1],
-    ] as const) {
-      if (!mesh) continue;
-      mesh.visible = broken && progress >= 0.25;
-      mesh.position.set(side * split * 0.2, -split * 0.16, split * 0.06);
-      mesh.rotation.z = side * -split * 0.5;
+
+    const mesh = shards.current;
+    if (mesh) {
+      const flying = broken && breakAt !== null && progress >= CRACK_AT && progress < 1;
+      mesh.visible = flying;
+      if (flying) {
+        const s = (elapsed - SEAL_BREAK_MS * CRACK_AT) / 1000;
+        shardSeeds.forEach((seed, i) => {
+          const fade = 1 - clamp01(s / 1.1);
+          scratch.position.set(
+            Math.cos(seed.angle) * seed.speed * s,
+            Math.sin(seed.angle) * seed.speed * s,
+            GEM_DEPTH * 0.6 + seed.lift * s,
+          );
+          scratch.rotation.set(seed.spin * s, seed.spin * 0.7 * s, 0);
+          scratch.scale.setScalar(Math.max(0.001, fade));
+          scratch.updateMatrix();
+          mesh.setMatrixAt(i, scratch.matrix);
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+      }
     }
-    if (socket.current) {
-      socket.current.visible = broken;
-      const pulse = 0.9 + 0.1 * Math.sin(clock.elapsedTime * 2 + index);
-      socket.current.scale.setScalar(Math.max(0.01, split) * pulse);
-    }
-    const flash = broken ? Math.max(0, 1 - Math.abs(progress - 0.3) / 0.25) * 1.4 : 0;
-    flareMaterial.uniforms.uFlash.value = flash + (broken && progress >= 1 ? 0.12 + 0.08 * Math.sin(clock.elapsedTime * 1.7 + index) : 0);
-    flareMaterial.uniforms.uSpin.value = clock.elapsedTime * 0.3 + index;
+
+    const flash = broken ? Math.max(0, 1 - Math.abs(progress - CRACK_AT) / 0.22) * 1.5 : 0;
+    flareMaterial.uniforms.uFlash.value = flash + (broken && progress >= 1 ? 0.16 + 0.1 * Math.sin(time * 1.7 + index) : 0);
+    flareMaterial.uniforms.uSpin.value = time * 0.3 + index;
     if (flareMesh.current) flareMesh.current.visible = broken;
   });
 
   return (
     <group>
       <group position={placement.position} rotation={[0, 0, placement.angle - Math.PI / 2]}>
-        <group ref={socket} visible={false}>
-          <mesh geometry={assets.hollowDisc} material={assets.hollow} position={[0, 0, 0.004]} />
-          <mesh geometry={assets.socket} material={assets.glow} position={[0, 0, 0.01]} />
+        <mesh geometry={assets.bezel} material={assets.gold} position={[0, 0, -0.02]} />
+        <group ref={gemGroup}>
+          <mesh geometry={assets.gem} material={gemMaterial} />
+          <mesh geometry={assets.crackShell} material={crackMaterial} renderOrder={7} />
         </group>
-        <mesh ref={whole} geometry={assets.whole} material={assets.wax} />
-        <mesh ref={left} geometry={assets.leftHalf} material={assets.wax} visible={false} />
-        <mesh ref={right} geometry={assets.rightHalf} material={assets.wax} visible={false} />
+        <instancedMesh
+          ref={shards}
+          args={[assets.shard, assets.shardMaterial, SHARD_COUNT]}
+          visible={false}
+          frustumCulled={false}
+        />
       </group>
       <mesh
         geometry={assets.numeralPlane}
@@ -205,7 +222,7 @@ export function SealSocket({ index, broken, breakAt, assets }: SealSocketProps) 
         position={placement.numeral}
         rotation={[0, 0, placement.angle - Math.PI / 2]}
       />
-      <Billboard position={[placement.position[0], placement.position[1], placement.position[2] + 0.12]}>
+      <Billboard position={[placement.position[0], placement.position[1], placement.position[2] + 0.16]}>
         <mesh ref={flareMesh} geometry={assets.flare} material={flareMaterial} visible={false} renderOrder={8} />
       </Billboard>
     </group>
