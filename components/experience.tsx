@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { classicTheme } from "@/lib/themes";
 import { CHARGE_SECONDS, ritualMotion, ritualStore } from "@/lib/ritual-store";
@@ -18,6 +19,7 @@ import {
 import type { ShareTarget } from "@/lib/share";
 import { StorySheet } from "@/components/share/story-sheet";
 import { PageActions } from "@/components/share/page-actions";
+import { PortalVeil } from "@/components/transition/portal-veil";
 
 type PreparedStory = {
   video: StoryVideo | null;
@@ -145,6 +147,28 @@ export function Experience() {
   };
 
   const closeStory = useCallback(() => setStory(null), []);
+  const router = useRouter();
+
+  useEffect(() => {
+    ritualStore.reset();
+    document.body.style.cursor = "";
+  }, []);
+
+  useEffect(() => {
+    if (phase === "portal") {
+      cancelStoryRecording();
+      setShareTarget(null);
+      router.prefetch("/muhur");
+    }
+    if (phase === "departed") {
+      try {
+        window.sessionStorage.setItem("arcana-arrival", "portal");
+      } catch (error) {
+        console.error("Arrival flag could not be stored", error);
+      }
+      router.push("/muhur");
+    }
+  }, [phase, router]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -226,6 +250,8 @@ export function Experience() {
       <AnimatePresence>
         {phase === "revealed" && <PageActions key="page-actions" onShare={shareTo} onAskAgain={askAgain} />}
       </AnimatePresence>
+
+      {(phase === "portal" || phase === "departed") && <PortalVeil hold={phase === "departed"} />}
 
       <AnimatePresence>
         {story && <StorySheet key="story" video={story.video} target={story.target} answer={story.answer} onClose={closeStory} />}

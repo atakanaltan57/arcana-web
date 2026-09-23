@@ -9,11 +9,13 @@ import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
 import { createWoodTextures } from "@/lib/textures/wood-texture";
 import { ritualMotion } from "@/lib/ritual-store";
-import { BOOK_SIZE, BookModel, RIGHT_PAGE } from "./book-model";
+import { BOOK_SIZE, BookModel, DROP_CAP_WORLD, RIGHT_PAGE } from "./book-model";
+import { WormholeTunnel } from "./wormhole";
+import { BlackHoleLensEffect, LensTracker } from "./black-hole-lens";
 import { Candle } from "./candle";
 import { DustParticles } from "./dust-particles";
 import { LightShaft } from "./light-shaft";
-import { CANDLE_POSITION, EFFECTS_LAYER } from "@/lib/scene-constants";
+import { CANDLE_POSITION, EFFECTS_LAYER, TUNNEL_ORIGIN } from "@/lib/scene-constants";
 
 const CLOSED_DIRECTION = new THREE.Vector3(0, 8.4, 6).normalize();
 const OPEN_DIRECTION = new THREE.Vector3(0, 0.94, 0.34).normalize();
@@ -50,6 +52,22 @@ function CameraRig() {
   }, [size.width, size.height]);
 
   useFrame((state, delta) => {
+    const perspective = camera as THREE.PerspectiveCamera;
+    if (ritualMotion.tunnel > 0) {
+      const travel = ritualMotion.tunnel;
+      const shake = Math.sin(state.clock.elapsedTime * 43) * 0.05 * travel;
+      camera.position.set(TUNNEL_ORIGIN[0] + shake, TUNNEL_ORIGIN[1] + shake * 0.6, TUNNEL_ORIGIN[2] + 1 - travel * travel * 60);
+      camera.lookAt(TUNNEL_ORIGIN[0], TUNNEL_ORIGIN[1], camera.position.z - 20);
+      perspective.fov = 70 + travel * 25;
+      perspective.updateProjectionMatrix();
+      return;
+    }
+    const dive = ritualMotion.dive;
+    const targetFov = 35 + dive * 40;
+    if (Math.abs(perspective.fov - targetFov) > 0.01) {
+      perspective.fov = dive > 0 ? targetFov : THREE.MathUtils.damp(perspective.fov, 35, 4, delta);
+      perspective.updateProjectionMatrix();
+    }
     const blend = ritualMotion.open;
     const push = 1 - ritualMotion.charge * 0.06;
     scratch.closed.copy(CLOSED_DIRECTION).multiplyScalar(poses.closedDistance * push);
@@ -67,6 +85,15 @@ function CameraRig() {
       THREE.MathUtils.lerp(0.25, 0.05, blend),
     );
 
+    if (dive > 0) {
+      const k = Math.pow(dive, 1.4);
+      scratch.position.lerp(new THREE.Vector3(DROP_CAP_WORLD[0], DROP_CAP_WORLD[1] + 0.3, DROP_CAP_WORLD[2] + 0.05), k);
+      scratch.target.lerp(new THREE.Vector3(...DROP_CAP_WORLD), Math.min(1, dive * 1.5));
+      camera.position.copy(scratch.position);
+      scratch.look.copy(scratch.target);
+      camera.lookAt(scratch.look);
+      return;
+    }
     const lambda = blend > 0 && blend < 1 ? 8 : 3;
     camera.position.x = THREE.MathUtils.damp(camera.position.x, scratch.position.x, lambda, delta);
     camera.position.y = THREE.MathUtils.damp(camera.position.y, scratch.position.y, lambda, delta);
@@ -172,6 +199,8 @@ type BookSceneProps = {
 export default function BookScene({ theme, onReady }: BookSceneProps) {
   const [dpr, setDpr] = useState(1.5);
   const [effects, setEffects] = useState(true);
+  const lens = useMemo(() => new BlackHoleLensEffect(), []);
+  useEffect(() => () => lens.dispose(), [lens]);
 
   return (
     <Canvas
@@ -210,11 +239,14 @@ export default function BookScene({ theme, onReady }: BookSceneProps) {
       <BookModel theme={theme} />
       <ContactShadows position={[0, 0.002, 0]} opacity={0.9} scale={14} blur={2.2} far={1.6} resolution={1024} color="#000000" />
       <DustParticles />
+      <LensTracker effect={lens} center={DROP_CAP_WORLD} horizonRadius={0.11} />
+      <WormholeTunnel />
       <LightShaft />
 
       {effects && (
         <EffectComposer multisampling={4}>
           <Bloom mipmapBlur intensity={0.75} luminanceThreshold={1} luminanceSmoothing={0.25} />
+          <primitive object={lens} dispose={null} />
           <ToneMapping mode={ToneMappingMode.AGX} />
           <Noise opacity={0.025} />
           <Vignette offset={0.3} darkness={0.8} />

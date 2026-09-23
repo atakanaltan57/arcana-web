@@ -5,3 +5,6 @@ export const BEAM_TARGET: [number, number, number] = [0.3, 0.2, 0.3];
 export const BEAM_RADIUS_START = 0.7;
 export const BEAM_RADIUS_GROWTH = 0.13;
 export const EFFECTS_LAYER = 1;
+export const TUNNEL_ORIGIN: [number, number, number] = [0, 140, 0];
+export const TUNNEL_LENGTH = 90;
+export const TUNNEL_RADIUS = 3.2;

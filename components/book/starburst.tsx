@@ -6,7 +6,7 @@ import { Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import { ritualMotion, ritualStore } from "@/lib/ritual-store";
 
-const vertexShader = /* glsl */ `
+export const starVertexShader = /* glsl */ `
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -14,7 +14,7 @@ const vertexShader = /* glsl */ `
   }
 `;
 
-const fragmentShader = /* glsl */ `
+export const starFragmentShader = /* glsl */ `
   uniform float uFlash;
   uniform float uSpin;
   varying vec2 vUv;
@@ -39,8 +39,8 @@ export function Starburst({ position }: StarburstProps) {
   const { geometry, material } = useMemo(() => {
     const geo = new THREE.PlaneGeometry(4.2, 4.2);
     const mat = new THREE.ShaderMaterial({
-      vertexShader,
-      fragmentShader,
+      vertexShader: starVertexShader,
+      fragmentShader: starFragmentShader,
       uniforms: { uFlash: { value: 0 }, uSpin: { value: 0 } },
       transparent: true,
       depthWrite: false,
@@ -77,8 +77,8 @@ export function GemGlint({ position }: StarburstProps) {
   const { geometry, material } = useMemo(() => {
     const geo = new THREE.PlaneGeometry(1.4, 1.4);
     const mat = new THREE.ShaderMaterial({
-      vertexShader,
-      fragmentShader,
+      vertexShader: starVertexShader,
+      fragmentShader: starFragmentShader,
       uniforms: { uFlash: { value: 0 }, uSpin: { value: 0 } },
       transparent: true,
       depthWrite: false,

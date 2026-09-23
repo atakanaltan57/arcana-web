@@ -15,15 +15,26 @@ import {
   createPaperNormalTexture,
   createPaperTexture,
   createPrintedPageTexture,
+  PRINTED_DROP_CAP,
+  PRINTED_LAYOUT,
 } from "@/lib/textures/page-textures";
-import { CHARGE_SECONDS, CLOSING_SECONDS, OPENING_SECONDS, ritualMotion, ritualStore } from "@/lib/ritual-store";
+import {
+  CHARGE_SECONDS,
+  CLOSING_SECONDS,
+  OPENING_SECONDS,
+  PORTAL_SECONDS,
+  UNDERPAGE_HOLD,
+  ritualMotion,
+  ritualStore,
+} from "@/lib/ritual-store";
 import type { PickedAnswer } from "@/lib/answers/pick-answer";
 import { clamp01, easeInOutCubic, easeOutCubic } from "@/lib/easing";
-import { playChime, playCrackle, playRustle, playWhoosh, stopDrone } from "@/lib/sound";
+import { playChime, playCrackle, playPortalRumble, playRustle, playTunnel, playWhoosh, stopDrone } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
 import { BURN_DURATION, BURN_IGNITION, EmberParticles } from "./ember-particles";
 import { enhanceCoverMaterial } from "./cover-material";
 import { GemGlint, Starburst } from "./starburst";
+import { VortexDisc } from "./wormhole";
 import { FLAME_POSITION } from "@/lib/scene-constants";
 import { createFlipPageMaterial, createInkPageMaterial, type FlipPageUniforms } from "./page-materials";
 
@@ -39,7 +50,8 @@ const FLIP_PAGE_COUNT = 7;
 const INK_START = 4;
 const INK_DURATION = 3;
 const CLOSE_DURATION = 1.7;
-const CLOSE_START = BURN_IGNITION + BURN_DURATION + 0.1;
+const BURN_DONE = BURN_IGNITION + BURN_DURATION * 0.9;
+const CLOSE_START = BURN_IGNITION + BURN_DURATION + 0.1 + UNDERPAGE_HOLD;
 const REDUCED_CLOSING_SECONDS = 1.3;
 
 const { width, depth, coverThickness, pagesThickness, overhang } = BOOK_SIZE;
@@ -57,6 +69,12 @@ export const RIGHT_PAGE = {
   halfWidth: width / 2,
   halfDepth: depth / 2,
 } as const;
+
+export const DROP_CAP_WORLD: [number, number, number] = [
+  RIGHT_PAGE.centerX - RIGHT_PAGE.halfWidth + ((PRINTED_DROP_CAP.x + PRINTED_DROP_CAP.size / 2) / PRINTED_LAYOUT.width) * width,
+  axisY,
+  -RIGHT_PAGE.halfDepth + ((PRINTED_DROP_CAP.y + PRINTED_DROP_CAP.size / 2) / PRINTED_LAYOUT.height) * depth,
+];
 
 function flipTiming(index: number) {
   const start = 1.2 + index * 0.22;
@@ -78,6 +96,7 @@ export function BookModel({ theme }: BookModelProps) {
   const chimed = useRef(false);
   const burning = useRef(false);
   const closeRustled = useRef(false);
+  const portalCues = useRef({ started: false, tunnel: false });
   const fireLight = useRef<THREE.PointLight>(null);
   const reducedMotion = useRef(false);
 
@@ -361,6 +380,7 @@ export function BookModel({ theme }: BookModelProps) {
       }
     } else if (phase === "closing") {
       const uniforms = assets.rightPage.uniforms;
+      motion.portalReady = t >= BURN_DONE && t < CLOSE_START - 0.2;
       if (!burning.current) {
         burning.current = true;
         closeRustled.current = false;
@@ -397,6 +417,46 @@ export function BookModel({ theme }: BookModelProps) {
         ritualStore.settle();
       }
     }
+
+    if (phase === "portal" || phase === "departed") {
+      coverAngle = Math.PI;
+      open = 1;
+      assets.rightPage.uniforms.uBurn.value = 1;
+      motion.burnClock = -1;
+      burning.current = false;
+      const cues = portalCues.current;
+      if (phase === "portal" && !cues.started) {
+        cues.started = true;
+        cues.tunnel = false;
+        motion.attractCenter = [DROP_CAP_WORLD[0], DROP_CAP_WORLD[1] + 0.15, DROP_CAP_WORLD[2]];
+        playPortalRumble(PORTAL_SECONDS);
+        vibrate([30, 60, 50, 60, 80]);
+      }
+      if (phase === "portal") {
+        if (reducedMotion.current) {
+          motion.tunnel = 1;
+          if (t >= 0.4) ritualStore.depart();
+        } else {
+          motion.vortex = easeOutCubic(t / 1.3);
+          motion.dive = easeInOutCubic((t - 1.1) / 1.3);
+          motion.tunnel = clamp01((t - 2.4) / 2.2);
+          motion.attract = Math.min(1, t / 0.9);
+          fire = 0.6 + motion.vortex * 0.8;
+          if (t >= 2.35 && !cues.tunnel) {
+            cues.tunnel = true;
+            playTunnel(2.4);
+          }
+          if (t >= PORTAL_SECONDS) ritualStore.depart();
+        }
+      }
+    } else {
+      portalCues.current.started = false;
+      motion.vortex = 0;
+      motion.dive = 0;
+      motion.tunnel = 0;
+      if (phase !== "charging") motion.attractCenter = [0, 0.7, 0];
+    }
+    if (phase !== "closing") motion.portalReady = false;
 
     motion.open = open;
     if (fireLight.current) {
@@ -483,6 +543,26 @@ export function BookModel({ theme }: BookModelProps) {
         intensity={0}
         decay={2}
       />
+      <VortexDisc position={[DROP_CAP_WORLD[0], DROP_CAP_WORLD[1] + 0.01, DROP_CAP_WORLD[2]]} />
+      <mesh
+        position={[DROP_CAP_WORLD[0], DROP_CAP_WORLD[1] + 0.004, DROP_CAP_WORLD[2]]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onClick={(event) => {
+          if (!ritualMotion.portalReady) return;
+          event.stopPropagation();
+          document.body.style.cursor = "";
+          ritualStore.enterPortal();
+        }}
+        onPointerOver={() => {
+          if (ritualMotion.portalReady) document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "";
+        }}
+      >
+        <planeGeometry args={[0.4, 0.4]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+      </mesh>
       <EmberParticles
         pageMinX={pagesCenterX - width / 2}
         pageMaxX={pagesCenterX + width / 2}

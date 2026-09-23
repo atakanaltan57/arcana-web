@@ -238,3 +238,81 @@ export function playCrackle(duration: number) {
     source.stop(at + 0.09);
   }
 }
+
+function noiseLayer(
+  ctx: AudioContext,
+  options: { type: BiquadFilterType; from: number; to: number; peak: number; attack: number; duration: number; q?: number },
+) {
+  const now = ctx.currentTime;
+  const source = ctx.createBufferSource();
+  source.buffer = getNoise(ctx);
+  source.loop = true;
+  const filter = ctx.createBiquadFilter();
+  filter.type = options.type;
+  filter.Q.value = options.q ?? 0.8;
+  filter.frequency.setValueAtTime(options.from, now);
+  filter.frequency.exponentialRampToValueAtTime(options.to, now + options.duration);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(options.peak, now + options.attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + options.duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(getOutput(ctx));
+  source.start(now);
+  source.stop(now + options.duration + 0.1);
+}
+
+function tone(ctx: AudioContext, type: OscillatorType, from: number, to: number, peak: number, duration: number, delay = 0) {
+  const start = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, start);
+  osc.frequency.exponentialRampToValueAtTime(to, start + duration);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(peak, start + Math.min(0.4, duration * 0.3));
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  osc.connect(gain);
+  gain.connect(getOutput(ctx));
+  osc.start(start);
+  osc.stop(start + duration + 0.05);
+}
+
+export function playPortalRumble(duration: number) {
+  const ctx = getContext();
+  if (!ctx) return;
+  tone(ctx, "sine", 42, 64, 0.35, duration);
+  tone(ctx, "triangle", 84, 130, 0.08, duration);
+  noiseLayer(ctx, { type: "lowpass", from: 180, to: 900, peak: 0.22, attack: duration * 0.6, duration });
+}
+
+export function playTunnel(duration: number) {
+  const ctx = getContext();
+  if (!ctx) return;
+  noiseLayer(ctx, { type: "bandpass", from: 300, to: 3200, peak: 0.3, attack: duration * 0.8, duration, q: 1.2 });
+  tone(ctx, "sawtooth", 110, 440, 0.04, duration);
+  tone(ctx, "sine", 220, 880, 0.06, duration);
+}
+
+export function playArrival() {
+  const ctx = getContext();
+  if (!ctx) return;
+  tone(ctx, "sine", 55, 48, 0.3, 3.5);
+  [392, 587.33, 783.99].forEach((freq, index) => tone(ctx, "sine", freq, freq, 0.05, 4, index * 0.12));
+}
+
+export function playSealCrack() {
+  const ctx = getContext();
+  if (!ctx) return;
+  noiseLayer(ctx, { type: "highpass", from: 2400, to: 1200, peak: 0.35, attack: 0.005, duration: 0.25 });
+  tone(ctx, "sine", 90, 40, 0.4, 0.6);
+  [1318.5, 1975.5, 2637].forEach((freq, index) => tone(ctx, "sine", freq, freq, 0.05, 2.4, 0.08 + index * 0.05));
+}
+
+export function playDoorGrind(duration: number) {
+  const ctx = getContext();
+  if (!ctx) return;
+  noiseLayer(ctx, { type: "lowpass", from: 260, to: 120, peak: 0.3, attack: 0.6, duration, q: 3 });
+  tone(ctx, "sawtooth", 38, 30, 0.08, duration);
+}

@@ -157,3 +157,4 @@ export function canvasToTexture(canvas: HTMLCanvasElement, srgb: boolean) {
   texture.needsUpdate = true;
   return texture;
 }
+

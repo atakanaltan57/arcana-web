@@ -6,7 +6,7 @@ import { Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import { ritualMotion } from "@/lib/ritual-store";
 
-const flameVertex = /* glsl */ `
+export const flameVertex = /* glsl */ `
   uniform float uTime;
   varying vec2 vUv;
   void main() {
@@ -18,7 +18,7 @@ const flameVertex = /* glsl */ `
   }
 `;
 
-const flameFragment = /* glsl */ `
+export const flameFragment = /* glsl */ `
   uniform float uTime;
   uniform float uBoost;
   varying vec2 vUv;
@@ -38,7 +38,7 @@ const flameFragment = /* glsl */ `
   }
 `;
 
-const haloFragment = /* glsl */ `
+export const haloFragment = /* glsl */ `
   uniform float uBoost;
   varying vec2 vUv;
   void main() {

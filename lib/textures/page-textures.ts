@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import answers from "@/lib/answers/genel.json";
+import { CIPHER_ALPHABET, CIPHER_CORPUS, CIPHER_CRIB_TOKENS, CIPHER_HEADER_TOKENS, toRoman } from "@/lib/cipher";
+import { drawCipherBlock, drawGlyph, drawGlyphRow } from "./cipher-text";
 import { BRAND_NAME_UPPER } from "@/lib/brand";
 import { traceBrandSymbol } from "./brand-symbol";
 import { canvasToTexture, createCanvas, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
@@ -86,41 +87,137 @@ export function createPageEdgeTexture() {
   return texture;
 }
 
+function wordStart(offset: number) {
+  const length = CIPHER_CORPUS.length;
+  for (let i = 0; i < length; i++) {
+    const index = (offset + i) % length;
+    if (CIPHER_CORPUS[index].kind === "space") return (index + 1) % length;
+  }
+  return 0;
+}
+
+function drawRules(ctx: CanvasRenderingContext2D, w: number, h: number, inset: number, color: string, width: number) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  for (const d of [0, width * 3]) {
+    ctx.strokeRect(inset + d, inset + d, w - (inset + d) * 2, h - (inset + d) * 2);
+  }
+}
+
+function drawDropCap(ctx: CanvasRenderingContext2D, glyph: number, x: number, y: number, size: number, rand: () => number) {
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, size, size);
+  ctx.strokeRect(x + 5, y + 5, size - 10, size - 10);
+  for (const [cx, cy] of [
+    [x, y],
+    [x + size, y],
+    [x, y + size],
+    [x + size, y + size],
+  ]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawGlyph(ctx, glyph, x + size * 0.27, y + size * 0.14, size * 0.72, rand);
+}
+
+function drawMarginNote(ctx: CanvasRenderingContext2D, x: number, y: number, rand: () => number) {
+  const count = 2 + Math.floor(rand() * 4);
+  for (let i = 0; i < count; i++) {
+    drawGlyph(ctx, Math.floor(rand() * CIPHER_ALPHABET.length), x, y + i * 16, 12, rand);
+  }
+  ctx.beginPath();
+  ctx.moveTo(x - 8, y - 6);
+  ctx.quadraticCurveTo(x - 16, y + count * 8, x - 8, y + count * 16 + 4);
+  ctx.stroke();
+}
+
+export const PRINTED_LAYOUT = {
+  width: 768,
+  height: 1075,
+  bodyX: 92,
+  bodyTop: 96,
+  glyphHeight: 17,
+  lineGap: 9,
+} as const;
+
+export const PRINTED_DROP_CAP = {
+  x: PRINTED_LAYOUT.bodyX,
+  y: PRINTED_LAYOUT.bodyTop,
+  size: (PRINTED_LAYOUT.glyphHeight + PRINTED_LAYOUT.lineGap) * 3 - PRINTED_LAYOUT.lineGap,
+} as const;
+
 export function createPrintedPageTexture(seed: number) {
-  const w = 512;
-  const h = 717;
+  const w = PRINTED_LAYOUT.width;
+  const h = PRINTED_LAYOUT.height;
   const rand = seededRandom(seed);
   const { canvas, ctx } = createCanvas(w, h);
-  ctx.fillStyle = "rgb(234,222,194)";
+  ctx.fillStyle = "rgb(232,218,186)";
   ctx.fillRect(0, 0, w, h);
+  const stains = smoothNoiseField(w, h, rand, [
+    { size: 180, weight: 1 },
+    { size: 50, weight: 0.4 },
+  ]);
+  const image = ctx.getImageData(0, 0, w, h);
+  for (let i = 0; i < w * h; i++) {
+    const tone = 0.9 + stains[i] * 0.12;
+    image.data[i * 4] *= tone;
+    image.data[i * 4 + 1] *= tone * (0.98 + stains[i] * 0.02);
+    image.data[i * 4 + 2] *= tone * (0.94 + stains[i] * 0.04);
+  }
+  ctx.putImageData(image, 0, 0);
   const age = ctx.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.72);
-  age.addColorStop(0, "rgba(140,100,50,0)");
-  age.addColorStop(1, "rgba(140,100,50,0.22)");
+  age.addColorStop(0, "rgba(130,90,40,0)");
+  age.addColorStop(1, "rgba(130,90,40,0.3)");
   ctx.fillStyle = age;
   ctx.fillRect(0, 0, w, h);
 
-  const words = (answers as string[]).join(" ").replace(/[.,;:—]/g, "").split(/\s+/);
-  ctx.fillStyle = "rgba(38,24,16,0.78)";
-  ctx.font = "15px Georgia, 'Times New Roman', serif";
-  ctx.textBaseline = "alphabetic";
-  const marginX = 64;
-  const lineHeight = 19;
-  let cursor = Math.floor(rand() * words.length);
-  for (let y = 104; y < h - 84; y += lineHeight) {
-    if (rand() < 0.05) continue;
-    let line = "";
-    const maxWidth = y > h - 110 && rand() < 0.5 ? w * 0.45 : w - marginX * 2;
-    while (true) {
-      const word = words[cursor % words.length];
-      const candidate = line ? `${line} ${word}` : word;
-      if (ctx.measureText(candidate).width > maxWidth) break;
-      line = candidate;
-      cursor++;
-    }
-    ctx.fillText(line, marginX, y);
-  }
-  ctx.fillStyle = "rgba(130,30,25,0.6)";
-  ctx.fillRect(w / 2 - 26, 58, 52, 4);
+  const rubric = "rgba(128,32,22,0.72)";
+  const ink = "rgb(40,24,14)";
+  drawRules(ctx, w, h, 52, "rgba(128,32,22,0.35)", 1.2);
+
+  ctx.fillStyle = rubric;
+  ctx.strokeStyle = rubric;
+  drawGlyphRow(ctx, CIPHER_HEADER_TOKENS, w / 2, 20, 18, rand);
+  ctx.font = "600 17px Georgia, 'Times New Roman', serif";
+  ctx.textAlign = "center";
+  ctx.fillText(toRoman(12 + (seed % 90)), w - 88, 34);
+
+  const bodyX = PRINTED_LAYOUT.bodyX;
+  const bodyRight = w - 150;
+  const { glyphHeight, lineGap } = PRINTED_LAYOUT;
+  const dropSize = PRINTED_DROP_CAP.size;
+  const start = wordStart(Math.floor(seed * 37) % CIPHER_CORPUS.length);
+  const firstGlyph = CIPHER_CORPUS.find((token, index) => index >= start && token.kind === "glyph");
+
+  ctx.fillStyle = rubric;
+  ctx.strokeStyle = rubric;
+  if (firstGlyph?.kind === "glyph") drawDropCap(ctx, firstGlyph.index, PRINTED_DROP_CAP.x, PRINTED_DROP_CAP.y, dropSize, rand);
+
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  drawCipherBlock(
+    ctx,
+    CIPHER_CORPUS,
+    start + 1,
+    {
+      x: bodyX,
+      y: PRINTED_LAYOUT.bodyTop,
+      width: bodyRight - bodyX,
+      bottom: h - 100,
+      glyphHeight,
+      lineGap,
+      indentFirst: dropSize + 14,
+      indentLines: 3,
+    },
+    rand,
+  );
+
+  ctx.fillStyle = rubric;
+  ctx.strokeStyle = rubric;
+  ctx.lineWidth = 1.2;
+  drawMarginNote(ctx, w - 118, 200 + rand() * 180, rand);
+  drawMarginNote(ctx, w - 118, 620 + rand() * 200, rand);
   return canvasToTexture(canvas, true);
 }
 
@@ -196,6 +293,34 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
+  const decorRand = seededRandom(pageNumber);
+  drawRules(ctx, w, h, 64, "rgba(0,255,0,0.5)", 1.6);
+  ctx.fillStyle = "rgba(0,255,0,0.6)";
+  for (const [cx, cy, sx, sy] of [
+    [64, 64, 1, 1],
+    [w - 64, 64, -1, 1],
+    [64, h - 64, 1, -1],
+    [w - 64, h - 64, -1, -1],
+  ]) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(sx, sy);
+    ctx.beginPath();
+    ctx.moveTo(8, 8);
+    ctx.bezierCurveTo(40, 8, 58, 26, 52, 44);
+    ctx.bezierCurveTo(46, 30, 30, 22, 8, 20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(14, 14, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.fillStyle = GOLD;
+  ctx.strokeStyle = GOLD;
+  drawGlyphRow(ctx, CIPHER_CRIB_TOKENS, w / 2, 150, 26, decorRand);
+
   ctx.fillStyle = GOLD;
   ctx.font = `600 38px ${family}`;
   ctx.letterSpacing = "18px";
@@ -232,7 +357,7 @@ export async function createAnswerTexture(answer: string, pageNumber: number) {
 
   ctx.fillStyle = "rgba(255,0,0,0.7)";
   ctx.font = `500 34px ${family}`;
-  ctx.fillText(`— ${pageNumber} —`, w / 2, h - 120);
+  ctx.fillText(`— ${toRoman(pageNumber)} —`, w / 2, h - 120);
 
   return canvasToTexture(canvas, false);
 }

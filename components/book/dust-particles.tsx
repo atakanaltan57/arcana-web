@@ -24,6 +24,7 @@ const vertexShader = /* glsl */ `
   uniform float uBeamRadius;
   uniform float uBeamGrowth;
   uniform vec3 uFlame;
+  uniform vec3 uAttractCenter;
   attribute float aSeed;
   varying float vAlpha;
   varying float vBokeh;
@@ -36,7 +37,7 @@ const vertexShader = /* glsl */ `
     p.z += cos(t * 1.1 + aSeed * 4.0) * 0.45 + cos(uTime * 1.1 + aSeed * 50.0) * 0.03;
     p.y = mod(p.y + uTime * 0.025 * (0.3 + aSeed), 7.4) + 0.1;
 
-    vec3 center = vec3(0.0, 0.7, 0.0);
+    vec3 center = uAttractCenter;
     float pull = uAttract * (0.45 + 0.55 * aSeed);
     float swirl = uAttract * 2.4 + aSeed * 6.28;
     vec3 orbit = center + vec3(cos(swirl + uTime * 2.0), 0.15 * sin(uTime * 3.0 + aSeed * 9.0), sin(swirl + uTime * 2.0)) * (0.35 + aSeed * 1.8);
@@ -123,6 +124,7 @@ export function DustParticles({ count = 760 }: DustParticlesProps) {
         uBeamRadius: { value: BEAM_RADIUS_START },
         uBeamGrowth: { value: BEAM_RADIUS_GROWTH },
         uFlame: { value: new THREE.Vector3(...FLAME_POSITION) },
+        uAttractCenter: { value: new THREE.Vector3(0, 0.7, 0) },
       },
       transparent: true,
       depthWrite: false,
@@ -145,6 +147,7 @@ export function DustParticles({ count = 760 }: DustParticlesProps) {
     uniforms.uPixelRatio.value = dpr;
     uniforms.uAttract.value = ritualMotion.attract;
     uniforms.uBurst.value = ritualMotion.burst;
+    uniforms.uAttractCenter.value.set(...ritualMotion.attractCenter);
     uniforms.uFocus.value = camera.position.length();
   });
 
