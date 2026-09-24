@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CHARGE_SECONDS, ritualMotion, ritualStore } from "@/lib/ritual-store";
 import { isSoundEnabled, setSoundEnabled, startDrone, stopDrone } from "@/lib/sound";
 import { vibrate } from "@/lib/haptics";
-import { BRAND_NAME } from "@/lib/brand";
 import {
   cancelStoryRecording,
   isStoryRecordingSupported,
@@ -19,7 +18,7 @@ import type { ShareTarget } from "@/lib/share";
 import { StorySheet } from "@/components/share/story-sheet";
 import { PageActions } from "@/components/share/page-actions";
 import { PortalVeil } from "@/components/transition/portal-veil";
-import { ArcanaSeal } from "@/components/brand/arcana-seal";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { AwakeningVeil } from "@/components/brand/awakening-veil";
 import { BookShelf } from "@/components/shelf/book-shelf";
 import { PaywallSheet } from "@/components/premium/paywall-sheet";
@@ -31,6 +30,10 @@ import type { Book } from "@/lib/books";
 
 function clampValue(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function isControlTarget(target: EventTarget | null) {
+  return target instanceof Element && target.closest("button, a, [role=dialog]") !== null;
 }
 
 type PreparedStory = {
@@ -231,7 +234,7 @@ export function Experience() {
   };
 
   const onPointerDown = (event: React.PointerEvent) => {
-    if (!ready || story || paywall || !event.isPrimary) return;
+    if (!ready || story || paywall || !event.isPrimary || isControlTarget(event.target)) return;
     drag.current = { x: event.clientX, id: event.pointerId, moved: false };
   };
 
@@ -246,7 +249,7 @@ export function Experience() {
   const onPointerUp = (event: React.PointerEvent) => {
     const current = drag.current;
     releaseDrag();
-    if (!current || current.id !== event.pointerId) return;
+    if (!current || current.id !== event.pointerId || isControlTarget(event.target)) return;
     const dx = event.clientX - current.x;
     if (phase === "idle" && Math.abs(dx) > Math.min(70, window.innerWidth * 0.12)) {
       bookStore.step(dx < 0 ? 1 : -1);
@@ -288,17 +291,18 @@ export function Experience() {
       <AwakeningVeil visible={!ready} label={messages.home.awakening} />
 
       <motion.header
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),1.25rem)] sm:px-8"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-[1fr_auto_1fr] items-center px-3 pt-[max(env(safe-area-inset-top),1.25rem)] sm:px-8"
         initial={{ opacity: 0 }}
         animate={ready ? { opacity: phase === "opening" ? 0.3 : 1 } : undefined}
         transition={{ duration: 1.2, ease: "easeOut" }}
       >
-        <LanguageToggle />
-        <h1 className="flex items-center gap-2.5 text-label font-medium uppercase text-gold-bright/90">
-          <ArcanaSeal className="size-5" />
-          {BRAND_NAME}
-        </h1>
-        <SoundToggle />
+        <div className="justify-self-start">
+          <LanguageToggle />
+        </div>
+        <BrandMark as="h1" />
+        <div className="justify-self-end">
+          <SoundToggle />
+        </div>
       </motion.header>
 
       <AnimatePresence>
@@ -320,7 +324,7 @@ export function Experience() {
         <AnimatePresence mode="wait">
           {ready && phase === "idle" && (
             <motion.div key="idle" {...fade} transition={{ duration: 0.9, ease: "easeOut" }} className="flex w-full flex-col items-center gap-3">
-              <p className="font-serif text-[1.8rem] italic leading-snug text-parchment [text-shadow:0_2px_16px_rgba(0,0,0,0.8)] sm:text-4xl">
+              <p className="text-balance font-serif text-[clamp(1.5rem,7vw,1.8rem)] italic leading-snug text-parchment [text-shadow:0_2px_16px_rgba(0,0,0,0.8)] sm:text-4xl">
                 {locked ? messages.home.lockedPrompt(bookText.title) : messages.home.prompt}
               </p>
               {bookError ? (
@@ -333,10 +337,10 @@ export function Experience() {
                   {messages.home.loadError}
                 </button>
               ) : (
-                <p className="text-label uppercase text-parchment/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
+                <p className="text-hint text-balance [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
                   {locked ? messages.home.lockedHint : answers ? messages.home.touchHint : messages.home.loadingPages}
                   {!locked && answers && (
-                    <span className="hidden normal-case tracking-normal text-parchment-dim/80 [@media(hover:hover)]:inline">{messages.home.keyHint}</span>
+                    <span className="hidden text-parchment-dim/80 [@media(hover:hover)]:inline">{messages.home.keyHint}</span>
                   )}
                 </p>
               )}
@@ -355,6 +359,19 @@ export function Experience() {
             </motion.div>
           )}
 
+          {phase === "revealed" && (
+            <motion.div key="revealed" {...fade} transition={{ duration: 1.1, delay: 0.4, ease: "easeOut" }}>
+              <button
+                type="button"
+                onClick={askAgain}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="btn-gold focus-ring pointer-events-auto"
+              >
+                {messages.home.askAgain}
+              </button>
+            </motion.div>
+          )}
+
           {phase === "closing" && shareTarget && (
             <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">
               {messages.home.preparingStory}
@@ -364,7 +381,7 @@ export function Experience() {
       </div>
 
       <AnimatePresence>
-        {phase === "revealed" && <PageActions key="page-actions" onShare={shareTo} onAskAgain={askAgain} />}
+        {phase === "revealed" && <PageActions key="page-actions" onShare={shareTo} />}
       </AnimatePresence>
 
       {(phase === "portal" || phase === "departed") && <PortalVeil hold={phase === "departed"} />}

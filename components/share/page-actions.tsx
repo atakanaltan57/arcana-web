@@ -8,18 +8,17 @@ import { useMessages } from "@/lib/i18n/locale-store";
 import { ShareIcon } from "./share-icons";
 
 const SHARE_TARGETS: ShareTarget[] = ["instagram", "tiktok", "whatsapp"];
-const REGION_TOP = 0.555;
-const REGION_HEIGHT = 0.31;
+const REGION_TOP = 0.56;
+const REGION_HEIGHT = 0.24;
 const REGION_WIDTH = 0.82;
 
 type PageActionsProps = {
   onShare: (target: ShareTarget) => (event: React.MouseEvent) => void;
-  onAskAgain: (event: React.MouseEvent) => void;
 };
 
 const stopPointer = (event: React.PointerEvent) => event.stopPropagation();
 
-export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
+export function PageActions({ onShare }: PageActionsProps) {
   const region = useRef<HTMLDivElement>(null);
   const messages = useMessages();
 
@@ -77,21 +76,12 @@ export function PageActions({ onShare, onAskAgain }: PageActionsProps) {
               <span className="grid size-[clamp(46px,calc(var(--pw)*0.13),64px)] place-items-center rounded-full border-[1.5px] border-[#6b4520]/80 bg-[#f6e7c4]/30 text-[#3a220c] shadow-[inset_0_1px_2px_rgba(80,50,20,0.25),0_1px_0_rgba(255,245,220,0.5)] transition-all duration-300 group-hover:scale-105 group-hover:border-[#b8893a] group-hover:bg-[#d9b25e]/40 group-active:scale-95">
                 <ShareIcon target={target} className="size-[46%]" />
               </span>
-              <span className="font-serif text-[clamp(12px,calc(var(--pw)*0.036),15px)] font-medium text-ink-page">
+              <span className="font-serif text-[clamp(13px,calc(var(--pw)*0.038),15px)] font-medium text-ink-page">
                 {SHARE_LABELS[target]}
               </span>
             </button>
           ))}
         </div>
-
-        <button
-          type="button"
-          onClick={onAskAgain}
-          onPointerDown={stopPointer}
-          className="btn-gold focus-ring pointer-events-auto min-h-[clamp(44px,calc(var(--pw)*0.11),52px)]! px-[clamp(22px,calc(var(--pw)*0.09),40px)]! text-[clamp(16px,calc(var(--pw)*0.05),22px)]!"
-        >
-          {messages.home.askAgain}
-        </button>
       </motion.div>
     </div>
   );

@@ -34,7 +34,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
 
   return (
     <motion.div
-      className="absolute inset-0 z-30 flex items-end justify-center bg-black/65 p-4 backdrop-blur-sm sm:items-center"
+      className="absolute inset-0 z-30 flex items-end justify-center bg-black/65 p-4 pb-[max(env(safe-area-inset-bottom),1rem)] backdrop-blur-sm sm:items-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -95,7 +95,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
                 aria-checked={active}
                 onClick={() => setPlan(id)}
                 className={`focus-ring relative flex min-h-24 flex-col items-center justify-center gap-0.5 rounded-2xl border px-3 py-3 transition-colors ${
-                  active ? "border-gold-bright/80 bg-gold/10" : "border-parchment/15 hover:border-gold/40"
+                  active ? "border-gold-bright/80 bg-gold/15 shadow-[0_0_18px_rgba(236,208,138,0.12)]" : "border-parchment/15 hover:border-gold/40"
                 }`}
               >
                 {option.note && (
@@ -103,8 +103,15 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
                     {option.note}
                   </span>
                 )}
+                {active && (
+                  <span className="absolute right-2 top-2 grid size-5 place-items-center rounded-full bg-gold-bright text-[#2a1806]" aria-hidden>
+                    <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  </span>
+                )}
                 <span className="text-label uppercase text-parchment/80">{option.label}</span>
-                <span className="font-serif text-2xl text-gold-bright">{option.price}</span>
+                <span className={`font-serif text-2xl ${active ? "text-gold-bright" : "text-parchment/80"}`}>{option.price}</span>
                 <span className="text-sm text-parchment/70">{option.period}</span>
               </button>
             );

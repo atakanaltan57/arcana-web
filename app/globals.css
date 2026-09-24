@@ -55,6 +55,13 @@ a {
   }
 }
 
+@utility text-hint {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--parchment) 85%, transparent);
+}
+
 @utility btn-gold {
   display: inline-flex;
   min-height: 3rem;
@@ -78,7 +85,11 @@ a {
     transform: scale(0.96);
   }
   &:disabled {
-    opacity: 0.5;
+    cursor: not-allowed;
+    background-image: none;
+    background-color: color-mix(in srgb, var(--gold) 8%, #0b0c10);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent);
+    color: color-mix(in srgb, var(--parchment) 60%, transparent);
   }
 }
 
@@ -92,7 +103,8 @@ a {
   border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
   padding-inline: 1.25rem;
   font-size: 0.875rem;
-  letter-spacing: 0.12em;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   color: color-mix(in srgb, var(--gold-bright) 92%, transparent);
   transition: background-color 300ms ease, border-color 300ms ease;
   &:hover {

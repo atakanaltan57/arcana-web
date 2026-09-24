@@ -27,6 +27,12 @@ const CLOSED_MIN_DISTANCE = 12.2;
 const SPINE_X = -(BOOK_SIZE.width + BOOK_SIZE.overhang) / 2;
 const PAGE_Y = BOOK_SIZE.coverThickness + BOOK_SIZE.pagesThickness / 2;
 
+function closedDistanceFor(width: number, height: number) {
+  const aspect = width / Math.max(height, 1);
+  const hudReserve = THREE.MathUtils.clamp(260 / Math.max(height, 1), 0.3, 0.55);
+  return Math.max(CLOSED_MIN_DISTANCE, 2.3 / (FOV_TAN * aspect), 2.6 / (FOV_TAN * (1 - hudReserve)));
+}
+
 function CameraRig() {
   const camera = useThree((state) => state.camera);
   const size = useThree((state) => state.size);
@@ -47,11 +53,11 @@ function CameraRig() {
 
   const poses = useMemo(() => {
     const aspect = size.width / Math.max(size.height, 1);
-    const closedDistance = Math.max(CLOSED_MIN_DISTANCE, 2.3 / (FOV_TAN * aspect));
+    const closedDistance = closedDistanceFor(size.width, size.height);
     const wide = aspect >= 1.05;
     const halfWidth = wide ? 3.5 : 1.75;
     const openDistance = Math.max(2.55 / FOV_TAN, halfWidth / (FOV_TAN * aspect));
-    const focusX = wide ? SPINE_X + 0.1 : 0.05;
+    const focusX = wide ? SPINE_X + 0.1 : 0.15;
     return { closedDistance, openDistance, focusX };
   }, [size.width, size.height]);
 
@@ -123,8 +129,7 @@ function BookCarousel({ bookId }: { bookId: string }) {
 
   const spacing = useMemo(() => {
     const aspect = size.width / Math.max(size.height, 1);
-    const closedDistance = Math.max(CLOSED_MIN_DISTANCE, 2.3 / (FOV_TAN * aspect));
-    const halfVisible = closedDistance * FOV_TAN * aspect;
+    const halfVisible = closedDistanceFor(size.width, size.height) * FOV_TAN * aspect;
     return THREE.MathUtils.clamp(halfVisible * 0.95 + 1, 3.6, 4.6);
   }, [size.width, size.height]);
 

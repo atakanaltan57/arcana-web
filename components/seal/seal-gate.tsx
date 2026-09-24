@@ -8,6 +8,7 @@ import { SEAL_COUNT, findSeal, saveBrokenSeal } from "@/lib/seals";
 import { BRAND_NAME } from "@/lib/brand";
 import { getMessages, useMessages } from "@/lib/i18n/locale-store";
 import { LanguageToggle } from "@/components/brand/language-toggle";
+import { BrandMark } from "@/components/brand/brand-mark";
 
 type Status =
   | { kind: "idle" }
@@ -87,21 +88,23 @@ export function SealGate({ broken, onBroken, onWrong, hidden }: SealGateProps) {
           exit={{ opacity: 0, transition: { duration: 1.2 } }}
           transition={{ duration: 1.4, delay: 0.6 }}
         >
-          <header className="relative flex flex-col items-center px-5 pt-[max(env(safe-area-inset-top),1.25rem)] text-center">
-            <Link
-              href="/"
-              aria-label={copy.back}
-              className="focus-ring pointer-events-auto absolute left-3 top-[max(env(safe-area-inset-top),0.75rem)] grid size-11 place-items-center rounded-full text-parchment/85 transition-colors hover:bg-white/5 hover:text-gold-bright"
-            >
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 5l-7 7 7 7" />
-              </svg>
-            </Link>
-            <div className="pointer-events-auto absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)]">
-              <LanguageToggle />
+          <header className="flex flex-col items-center px-3 pt-[max(env(safe-area-inset-top),1.25rem)] text-center sm:px-8">
+            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
+              <Link
+                href="/"
+                aria-label={copy.back}
+                className="focus-ring pointer-events-auto grid size-11 justify-self-start place-items-center rounded-full text-parchment/85 transition-colors hover:bg-white/5 hover:text-gold-bright"
+              >
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 5l-7 7 7 7" />
+                </svg>
+              </Link>
+              <BrandMark />
+              <div className="justify-self-end">
+                <LanguageToggle />
+              </div>
             </div>
-            <p className="text-micro uppercase text-gold-bright/85">{copy.brand}</p>
-            <h1 className="mt-1.5 font-serif text-3xl text-parchment [text-shadow:0_2px_14px_rgba(0,0,0,0.8)] sm:text-4xl">{copy.title}</h1>
+            <h1 className="mt-1 font-serif text-3xl text-parchment [text-shadow:0_2px_14px_rgba(0,0,0,0.8)] sm:text-4xl">{copy.title}</h1>
             <div className="mt-2.5 flex items-center gap-3" role="img" aria-label={copy.progress(broken.length, SEAL_COUNT)}>
               <div className="flex gap-2.5">
                 {Array.from({ length: SEAL_COUNT }, (_, index) => (
