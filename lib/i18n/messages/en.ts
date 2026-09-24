@@ -48,6 +48,9 @@ export const en: Messages = {
     video: "Video",
     imageAria: "Share the answer as an image",
     videoAria: "Share the ritual as a video",
+    link: "Link",
+    linkAria: "Share a link to this answer",
+    linkCopied: "Link copied. Paste it anywhere.",
     preparing: "Preparing…",
     text: (brand: string, answer: string) => `${brand} told me: “${answer}”`,
     textWithQuestion: (brand: string, question: string, answer: string) => `I asked “${question}” and ${brand} said: “${answer}”`,
@@ -113,6 +116,14 @@ export const en: Messages = {
   daily: {
     first: "Today's first page",
     streak: (days: number) => `You've asked ${days} days in a row`,
+  },
+  answerPage: {
+    intro: (brand: string) => `${brand} answered this question`,
+    introNoQuestion: (brand: string) => `${brand} answered`,
+    cta: "Ask yours",
+    note: "For entertainment only.",
+    title: (answer: string) => `“${answer}”`,
+    description: (question: string) => (question ? `The answer to “${question}”. Ask the book yourself.` : "The book's answer. Ask it yourself."),
   },
   errorPage: {
     title: "The book did not open this time.",

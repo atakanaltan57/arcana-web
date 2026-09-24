@@ -7,7 +7,7 @@ import type { ShareKind } from "@/lib/share";
 import { useMessages } from "@/lib/i18n/locale-store";
 import { ShareIcon } from "./share-icons";
 
-const SHARE_KINDS: ShareKind[] = ["image", "video"];
+const SHARE_KINDS: ShareKind[] = ["image", "link", "video"];
 const REGION_TOP = 0.56;
 const REGION_HEIGHT = 0.24;
 const REGION_WIDTH = 0.82;
@@ -66,7 +66,7 @@ export function PageActions({ onShare, busy, videoAvailable }: PageActionsProps)
         </div>
 
         <div className="flex gap-[clamp(12px,calc(var(--pw)*0.05),26px)]">
-          {SHARE_KINDS.filter((kind) => kind === "image" || videoAvailable).map((kind) => (
+          {SHARE_KINDS.filter((kind) => kind !== "video" || videoAvailable).map((kind) => (
             <button
               key={kind}
               type="button"

@@ -14,7 +14,7 @@ import {
   stopStoryRecording,
   type StoryVideo,
 } from "@/lib/story-recorder";
-import { shareAnswerCard, type ShareKind } from "@/lib/share";
+import { shareAnswerCard, shareAnswerLink, type ShareKind } from "@/lib/share";
 import { createAnswerCard } from "@/lib/answer-card";
 import { recordDailyPage } from "@/lib/daily";
 import type { PickedAnswer } from "@/lib/answers/pick-answer";
@@ -42,8 +42,7 @@ function isControlTarget(target: EventTarget | null) {
 
 type PreparedStory = {
   video: StoryVideo | null;
-  answer: string;
-  question: string;
+  answer: PickedAnswer;
 };
 
 const BookScene = dynamic(() => import("@/components/book/book-scene"), { ssr: false });
@@ -195,14 +194,17 @@ export function Experience() {
       cancelStoryRecording();
       return;
     }
-    const answerText = answerRef.current?.text ?? "";
-    const questionText = answerRef.current?.question ?? "";
+    const shared = answerRef.current;
     setVideoPending(false);
+    if (!shared) {
+      cancelStoryRecording();
+      return;
+    }
     stopStoryRecording()
-      .then((video) => setStory({ video, answer: answerText, question: questionText }))
+      .then((video) => setStory({ video, answer: shared }))
       .catch((error: unknown) => {
         console.error("Story video could not be prepared", error);
-        setStory({ video: null, answer: answerText, question: questionText });
+        setStory({ video: null, answer: shared });
       });
   }, [phase, answer, videoPending]);
 
@@ -213,11 +215,27 @@ export function Experience() {
     setNotice(null);
     try {
       const card = await createAnswerCard({ answer: current.text, question: current.question, bookTitle: current.bookTitle, golden: current.golden });
-      const outcome = await shareAnswerCard(card, current.text, current.question);
+      const outcome = await shareAnswerCard(card, current);
       if (outcome === "downloaded") setNotice(getMessages().share.imageSaved);
       if (outcome === "in-app") setNotice(getMessages().share.inApp);
     } catch (error) {
       console.error("Answer card share failed", error);
+      setNotice(getMessages().share.failed);
+    } finally {
+      setSharing(null);
+    }
+  };
+
+  const shareLink = async () => {
+    const current = answerRef.current;
+    if (!current) return;
+    setSharing("link");
+    setNotice(null);
+    try {
+      const outcome = await shareAnswerLink(current);
+      if (outcome === "copied") setNotice(getMessages().share.linkCopied);
+    } catch (error) {
+      console.error("Answer link share failed", error);
       setNotice(getMessages().share.failed);
     } finally {
       setSharing(null);
@@ -231,8 +249,14 @@ export function Experience() {
       void shareImage();
       return;
     }
+    if (kind === "link") {
+      void shareLink();
+      return;
+    }
+    const current = answerRef.current;
+    if (!current) return;
     if (!isStoryRecordingSupported()) {
-      setStory({ video: null, answer: answerRef.current?.text ?? "", question: answerRef.current?.question ?? "" });
+      setStory({ video: null, answer: current });
       return;
     }
     setVideoPending(true);
@@ -484,7 +508,7 @@ export function Experience() {
       {(phase === "portal" || phase === "departed") && <PortalVeil hold={phase === "departed"} />}
 
       <AnimatePresence>
-        {story && <StorySheet key="story" video={story.video} answer={story.answer} question={story.question} onClose={closeStory} />}
+        {story && <StorySheet key="story" video={story.video} answer={story.answer} onClose={closeStory} />}
       </AnimatePresence>
 
       <AnimatePresence>{paywall && <PaywallSheet key="paywall" book={book} onClose={closePaywall} />}</AnimatePresence>

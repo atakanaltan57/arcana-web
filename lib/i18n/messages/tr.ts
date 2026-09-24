@@ -46,6 +46,9 @@ export const tr = {
     video: "Video",
     imageAria: "Cevabı görsel olarak paylaş",
     videoAria: "Ritüeli video olarak paylaş",
+    link: "Bağlantı",
+    linkAria: "Cevabın bağlantısını paylaş",
+    linkCopied: "Bağlantı kopyalandı. İstediğin yere yapıştır.",
     preparing: "Hazırlanıyor…",
     text: (brand: string, answer: string) => `${brand} bana şunu söyledi: “${answer}”`,
     textWithQuestion: (brand: string, question: string, answer: string) => `“${question}” diye sordum. ${brand} dedi ki: “${answer}”`,
@@ -111,6 +114,14 @@ export const tr = {
   daily: {
     first: "Günün ilk sayfası",
     streak: (days: number) => `${days} gündür her gün soruyorsun`,
+  },
+  answerPage: {
+    intro: (brand: string) => `${brand} bu soruya şöyle cevap verdi`,
+    introNoQuestion: (brand: string) => `${brand} şöyle cevap verdi`,
+    cta: "Sen de sor",
+    note: "Eğlence amaçlıdır.",
+    title: (answer: string) => `“${answer}”`,
+    description: (question: string) => (question ? `“${question}” sorusunun cevabı. Sen de kitaba sor.` : "Kitabın cevabı. Sen de kitaba sor."),
   },
   errorPage: {
     title: "Kitap bu sefer açılmadı.",

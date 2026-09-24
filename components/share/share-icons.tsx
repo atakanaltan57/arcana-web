@@ -14,6 +14,15 @@ function ImageIcon({ className }: IconProps) {
   );
 }
 
+function LinkIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+      <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+    </svg>
+  );
+}
+
 function VideoIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -34,6 +43,7 @@ export function ShareUploadIcon({ className }: IconProps) {
 
 const ICONS: Record<ShareKind, (props: IconProps) => React.JSX.Element> = {
   image: ImageIcon,
+  link: LinkIcon,
   video: VideoIcon,
 };
 

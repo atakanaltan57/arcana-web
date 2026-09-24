@@ -4,17 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { StoryVideo } from "@/lib/story-recorder";
 import { downloadStory, shareStory } from "@/lib/share";
+import type { PickedAnswer } from "@/lib/answers/pick-answer";
 import { useMessages } from "@/lib/i18n/locale-store";
 import { ShareUploadIcon } from "./share-icons";
 
 type StorySheetProps = {
   video: StoryVideo | null;
-  answer: string;
-  question: string;
+  answer: PickedAnswer;
   onClose: () => void;
 };
 
-export function StorySheet({ video, answer, question, onClose }: StorySheetProps) {
+export function StorySheet({ video, answer, onClose }: StorySheetProps) {
   const messages = useMessages();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function StorySheet({ video, answer, question, onClose }: StorySheetProps
     setBusy(true);
     setMessage(null);
     try {
-      const outcome = await shareStory(video, answer, question);
+      const outcome = await shareStory(video, answer);
       if (outcome === "downloaded" || outcome === "copied") setMessage(messages.story[outcome]);
       if (outcome === "in-app") setMessage(messages.share.inApp);
     } catch (error) {
@@ -88,7 +88,7 @@ export function StorySheet({ video, answer, question, onClose }: StorySheetProps
             playsInline
           />
         ) : (
-          <p className="select-text px-4 text-center font-serif text-xl italic text-parchment/90">“{answer}”</p>
+          <p className="select-text px-4 text-center font-serif text-xl italic text-parchment/90">“{answer.text}”</p>
         )}
 
         <button

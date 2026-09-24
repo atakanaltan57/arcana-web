@@ -6,6 +6,7 @@ export type PickedAnswer = {
   bookTitle: string;
   question: string;
   golden: boolean;
+  locale: string;
 };
 
 const HISTORY_PREFIX = "ck-recent-answers:";
@@ -66,6 +67,7 @@ export function pickAnswer({ locale, bookId, bookTitle, answers, question = "" }
     bookId,
     bookTitle,
     question,
+    locale,
     golden: randomInt(GOLDEN_ODDS) === 0,
   };
 }
