@@ -55,6 +55,9 @@ function resetMotion() {
   ritualMotion.attractCenter = [0, 0.7, 0];
 }
 
+export const QUESTION_MAX_LENGTH = 90;
+
+let pendingQuestion = "";
 let snapshot: RitualSnapshot = { phase: "idle", answer: null };
 const serverSnapshot: RitualSnapshot = { phase: "idle", answer: null };
 const listeners = new Set<() => void>();
@@ -74,8 +77,9 @@ export const ritualStore = {
   },
   getSnapshot: () => snapshot,
   getServerSnapshot: () => serverSnapshot,
-  begin() {
+  begin(question = "") {
     if (snapshot.phase !== "idle" || ritualMotion.swapping || !bookStore.getSnapshot().answers) return false;
+    pendingQuestion = question.trim().replace(/\s+/g, " ").slice(0, QUESTION_MAX_LENGTH);
     emit({ phase: "charging", answer: null });
     return true;
   },
@@ -87,7 +91,7 @@ export const ritualStore = {
       emit({ phase: "idle", answer: null });
       return;
     }
-    emit({ phase: "opening", answer: pickAnswer({ locale: getMessages().locale, bookId: book.id, bookTitle: getMessages().books[book.id].title, answers }) });
+    emit({ phase: "opening", answer: pickAnswer({ locale: getMessages().locale, bookId: book.id, bookTitle: getMessages().books[book.id].title, answers, question: pendingQuestion }) });
   },
   reveal() {
     if (snapshot.phase !== "opening") return;

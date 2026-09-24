@@ -2,7 +2,7 @@ import { BRAND_NAME_UPPER, siteUrl } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
 import { getSoundStream } from "@/lib/sound";
 import { traceBrandSymbol } from "@/lib/textures/brand-symbol";
-import { getSerifFamily } from "@/lib/textures/page-textures";
+import { getSerifFamily, wrapText } from "@/lib/textures/page-textures";
 import { fillSpacedText } from "@/lib/textures/procedural";
 
 export type StoryVideo = {
@@ -44,7 +44,7 @@ function pickMimeType() {
   return MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
 }
 
-function createOverlay(bookTitle: string) {
+function createOverlay(bookTitle: string, question: string) {
   const canvas = document.createElement("canvas");
   canvas.width = STORY_WIDTH;
   canvas.height = STORY_HEIGHT;
@@ -52,11 +52,12 @@ function createOverlay(bookTitle: string) {
   if (!ctx) throw new Error("Canvas 2D context is not available");
   const family = getSerifFamily();
 
-  const top = ctx.createLinearGradient(0, 0, 0, 260);
+  const topHeight = question ? 380 : 260;
+  const top = ctx.createLinearGradient(0, 0, 0, topHeight);
   top.addColorStop(0, "rgba(5,6,8,0.85)");
   top.addColorStop(1, "rgba(5,6,8,0)");
   ctx.fillStyle = top;
-  ctx.fillRect(0, 0, STORY_WIDTH, 260);
+  ctx.fillRect(0, 0, STORY_WIDTH, topHeight);
 
   const bottom = ctx.createLinearGradient(0, STORY_HEIGHT - 280, 0, STORY_HEIGHT);
   bottom.addColorStop(0, "rgba(5,6,8,0)");
@@ -78,6 +79,13 @@ function createOverlay(bookTitle: string) {
   ctx.fillStyle = "rgba(239,227,200,0.9)";
   ctx.font = `italic 500 28px ${family}`;
   ctx.fillText(bookTitle, STORY_WIDTH / 2, 228);
+  if (question) {
+    ctx.fillStyle = "rgba(244,226,180,0.95)";
+    ctx.font = `italic 500 32px ${family}`;
+    wrapText(ctx, `“${question}”`, 600)
+      .slice(0, 2)
+      .forEach((line, index) => ctx.fillText(line, STORY_WIDTH / 2, 290 + index * 40));
+  }
 
   ctx.fillStyle = "rgba(239,227,200,0.85)";
   ctx.font = `italic 500 30px ${family}`;
@@ -106,7 +114,7 @@ export function cancelStoryRecording() {
   recording.recorder.stream.getVideoTracks().forEach((track) => track.stop());
 }
 
-export function startStoryRecording(source: HTMLCanvasElement, bookTitle: string) {
+export function startStoryRecording(source: HTMLCanvasElement, bookTitle: string, question = "") {
   if (!isStoryRecordingSupported()) return false;
   cancelStoryRecording();
   try {
@@ -115,7 +123,7 @@ export function startStoryRecording(source: HTMLCanvasElement, bookTitle: string
     canvas.height = STORY_HEIGHT;
     const ctx = canvas.getContext("2d");
     if (!ctx) return false;
-    const overlay = createOverlay(bookTitle);
+    const overlay = createOverlay(bookTitle, question);
 
     const stream = canvas.captureStream(30);
     const audio = getSoundStream();

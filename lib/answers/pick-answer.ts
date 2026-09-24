@@ -4,6 +4,7 @@ export type PickedAnswer = {
   page: number;
   bookId: string;
   bookTitle: string;
+  question: string;
 };
 
 const HISTORY_PREFIX = "ck-recent-answers:";
@@ -42,9 +43,10 @@ type PickSource = {
   bookId: string;
   bookTitle: string;
   answers: string[];
+  question?: string;
 };
 
-export function pickAnswer({ locale, bookId, bookTitle, answers }: PickSource): PickedAnswer {
+export function pickAnswer({ locale, bookId, bookTitle, answers, question = "" }: PickSource): PickedAnswer {
   if (answers.length === 0) {
     throw new Error(`Book "${bookId}" has no answers`);
   }
@@ -61,5 +63,6 @@ export function pickAnswer({ locale, bookId, bookTitle, answers }: PickSource): 
     page: 12 + randomInt(460),
     bookId,
     bookTitle,
+    question,
   };
 }

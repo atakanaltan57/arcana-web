@@ -1,44 +1,43 @@
-import type { ShareTarget } from "@/lib/share";
+import type { ShareKind } from "@/lib/share";
 
 type IconProps = {
   className?: string;
 };
 
-function InstagramIcon({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-      <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function TikTokIcon({ className }: IconProps) {
+function ImageIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M13.5 3.5v11.2a3.3 3.3 0 1 1-3.3-3.3" />
-      <path d="M13.5 3.5c.4 2.6 2.2 4.3 4.8 4.5" />
+      <rect x="4" y="3.5" width="16" height="17" rx="3" />
+      <circle cx="9.5" cy="9" r="1.6" />
+      <path d="M4.5 17l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5" />
     </svg>
   );
 }
 
-function WhatsAppIcon({ className }: IconProps) {
+function VideoIcon({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
-      <path d="M4.2 19.8l1.1-3.9A8.2 8.2 0 1 1 8.4 19z" />
-      <path d="M9.3 8.4c.2-.5.6-.5.9-.5l.6 1.4c.1.3 0 .5-.2.7l-.4.5c.6 1.2 1.6 2.1 2.8 2.7l.5-.5c.2-.2.4-.2.7-.1l1.4.6c0 .4-.1.8-.5 1.1-.6.5-1.5.6-2.5.2-1.9-.8-3.4-2.3-4-4.1-.3-.9-.1-1.6.7-2z" />
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3.5" y="5.5" width="12" height="13" rx="2.5" />
+      <path d="M15.5 10.5l5-3v9l-5-3z" />
     </svg>
   );
 }
 
-const ICONS: Record<ShareTarget, (props: IconProps) => React.JSX.Element> = {
-  instagram: InstagramIcon,
-  tiktok: TikTokIcon,
-  whatsapp: WhatsAppIcon,
+export function ShareUploadIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 15V3.5M7.5 8L12 3.5 16.5 8" />
+      <path d="M5 12.5v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+    </svg>
+  );
+}
+
+const ICONS: Record<ShareKind, (props: IconProps) => React.JSX.Element> = {
+  image: ImageIcon,
+  video: VideoIcon,
 };
 
-export function ShareIcon({ target, className }: IconProps & { target: ShareTarget }) {
-  const Icon = ICONS[target];
+export function ShareIcon({ kind, className }: IconProps & { kind: ShareKind }) {
+  const Icon = ICONS[kind];
   return <Icon className={className} />;
 }

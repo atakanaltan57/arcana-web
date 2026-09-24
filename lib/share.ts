@@ -2,59 +2,68 @@ import { BRAND_NAME, shareUrl } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
 import type { StoryVideo } from "@/lib/story-recorder";
 
-export type ShareTarget = "instagram" | "tiktok" | "whatsapp";
+export type ShareKind = "image" | "video";
 
-export type ShareOutcome = "shared" | "downloaded" | "copied" | "cancelled";
+export type ShareOutcome = "shared" | "downloaded" | "copied" | "cancelled" | "in-app";
 
-export const SHARE_LABELS: Record<ShareTarget, string> = {
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  whatsapp: "WhatsApp",
-};
+const IN_APP_PATTERN = /Instagram|FBAN|FBAV|FB_IAB|TikTok|musical_ly|BytedanceWebview|Line\/|Snapchat|Twitter/i;
 
-export function shareText(answer: string) {
-  const text = getMessages().share.text(BRAND_NAME, answer);
-  const url = shareUrl("answer");
-  return url ? `${text}
-${url}` : text;
+export function isInAppBrowser() {
+  return typeof navigator !== "undefined" && IN_APP_PATTERN.test(navigator.userAgent);
 }
 
-export function downloadStory(video: StoryVideo) {
-  const url = URL.createObjectURL(video.blob);
+export function shareText(answer: string, question = "") {
+  const { share } = getMessages();
+  const text = question ? share.textWithQuestion(BRAND_NAME, question, answer) : share.text(BRAND_NAME, answer);
+  const url = shareUrl("answer");
+  return url ? `${text}\n${url}` : text;
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${getMessages().share.fileName}.${video.extension}`;
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-function openWhatsAppText(text: string) {
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+export function downloadStory(video: StoryVideo) {
+  downloadBlob(video.blob, `${getMessages().share.fileName}.${video.extension}`);
 }
 
 function isAbort(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
-export async function shareStory(video: StoryVideo | null, target: ShareTarget, answer: string): Promise<ShareOutcome> {
-  const text = shareText(answer);
+async function shareFile(file: File, text: string): Promise<ShareOutcome> {
+  if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text });
+      return "shared";
+    } catch (error) {
+      if (isAbort(error)) return "cancelled";
+      throw error;
+    }
+  }
+  if (isInAppBrowser()) return "in-app";
+  downloadBlob(file, file.name);
+  return "downloaded";
+}
+
+export async function shareAnswerCard(card: Blob, answer: string, question: string): Promise<ShareOutcome> {
+  const file = new File([card], `${getMessages().share.fileName}.png`, { type: "image/png" });
+  return shareFile(file, shareText(answer, question));
+}
+
+export async function shareStory(video: StoryVideo | null, answer: string, question: string): Promise<ShareOutcome> {
+  const text = shareText(answer, question);
 
   if (video) {
     const file = new File([video.blob], `${getMessages().share.fileName}.${video.extension}`, { type: video.mimeType });
-    if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], text });
-        return "shared";
-      } catch (error) {
-        if (isAbort(error)) return "cancelled";
-        throw error;
-      }
-    }
-    downloadStory(video);
-    if (target === "whatsapp") openWhatsAppText(text);
-    return "downloaded";
+    return shareFile(file, text);
   }
 
   if (typeof navigator.share === "function") {
@@ -65,10 +74,6 @@ export async function shareStory(video: StoryVideo | null, target: ShareTarget, 
       if (isAbort(error)) return "cancelled";
       throw error;
     }
-  }
-  if (target === "whatsapp") {
-    openWhatsAppText(text);
-    return "shared";
   }
   await navigator.clipboard.writeText(text);
   return "copied";

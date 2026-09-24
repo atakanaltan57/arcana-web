@@ -3,18 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { StoryVideo } from "@/lib/story-recorder";
-import { downloadStory, shareStory, type ShareTarget } from "@/lib/share";
+import { downloadStory, shareStory } from "@/lib/share";
 import { useMessages } from "@/lib/i18n/locale-store";
-import { ShareIcon } from "./share-icons";
+import { ShareUploadIcon } from "./share-icons";
 
 type StorySheetProps = {
   video: StoryVideo | null;
-  target: ShareTarget;
   answer: string;
+  question: string;
   onClose: () => void;
 };
 
-export function StorySheet({ video, target, answer, onClose }: StorySheetProps) {
+export function StorySheet({ video, answer, question, onClose }: StorySheetProps) {
   const messages = useMessages();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -46,8 +46,9 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
     setBusy(true);
     setMessage(null);
     try {
-      const outcome = await shareStory(video, target, answer);
+      const outcome = await shareStory(video, answer, question);
       if (outcome === "downloaded" || outcome === "copied") setMessage(messages.story[outcome]);
+      if (outcome === "in-app") setMessage(messages.share.inApp);
     } catch (error) {
       console.error("Story share failed", error);
       setMessage(messages.story.failed);
@@ -97,8 +98,8 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
           disabled={busy}
           className="btn-gold focus-ring w-full"
         >
-          <ShareIcon target={target} className="size-5" />
-          {busy ? messages.story.opening : messages.share.cta[target]}
+          <ShareUploadIcon className="size-5" />
+          {busy ? messages.story.opening : messages.story.shareVideo}
         </button>
 
         <div className="flex w-full gap-3">

@@ -3,22 +3,24 @@
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ritualMotion } from "@/lib/ritual-store";
-import { SHARE_LABELS, type ShareTarget } from "@/lib/share";
+import type { ShareKind } from "@/lib/share";
 import { useMessages } from "@/lib/i18n/locale-store";
 import { ShareIcon } from "./share-icons";
 
-const SHARE_TARGETS: ShareTarget[] = ["instagram", "tiktok", "whatsapp"];
+const SHARE_KINDS: ShareKind[] = ["image", "video"];
 const REGION_TOP = 0.56;
 const REGION_HEIGHT = 0.24;
 const REGION_WIDTH = 0.82;
 
 type PageActionsProps = {
-  onShare: (target: ShareTarget) => (event: React.MouseEvent) => void;
+  onShare: (kind: ShareKind) => (event: React.MouseEvent) => void;
+  busy: ShareKind | null;
+  videoAvailable: boolean;
 };
 
 const stopPointer = (event: React.PointerEvent) => event.stopPropagation();
 
-export function PageActions({ onShare }: PageActionsProps) {
+export function PageActions({ onShare, busy, videoAvailable }: PageActionsProps) {
   const region = useRef<HTMLDivElement>(null);
   const messages = useMessages();
 
@@ -64,20 +66,22 @@ export function PageActions({ onShare }: PageActionsProps) {
         </div>
 
         <div className="flex gap-[clamp(12px,calc(var(--pw)*0.05),26px)]">
-          {SHARE_TARGETS.map((target) => (
+          {SHARE_KINDS.filter((kind) => kind === "image" || videoAvailable).map((kind) => (
             <button
-              key={target}
+              key={kind}
               type="button"
-              onClick={onShare(target)}
+              onClick={onShare(kind)}
               onPointerDown={stopPointer}
-              aria-label={messages.share.cta[target]}
-              className="focus-ring group pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl"
+              disabled={busy !== null}
+              aria-label={messages.share[`${kind}Aria`]}
+              aria-busy={busy === kind}
+              className="focus-ring group pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl disabled:opacity-60"
             >
               <span className="grid size-[clamp(46px,calc(var(--pw)*0.13),64px)] place-items-center rounded-full border-[1.5px] border-[#6b4520]/80 bg-[#f6e7c4]/30 text-[#3a220c] shadow-[inset_0_1px_2px_rgba(80,50,20,0.25),0_1px_0_rgba(255,245,220,0.5)] transition-all duration-300 group-hover:scale-105 group-hover:border-[#b8893a] group-hover:bg-[#d9b25e]/40 group-active:scale-95">
-                <ShareIcon target={target} className="size-[46%]" />
+                <ShareIcon kind={kind} className="size-[46%]" />
               </span>
               <span className="font-serif text-[clamp(13px,calc(var(--pw)*0.038),15px)] font-medium text-ink-page">
-                {SHARE_LABELS[target]}
+                {busy === kind ? messages.share.preparing : messages.share[kind]}
               </span>
             </button>
           ))}

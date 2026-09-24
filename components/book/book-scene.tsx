@@ -29,7 +29,7 @@ const PAGE_Y = BOOK_SIZE.coverThickness + BOOK_SIZE.pagesThickness / 2;
 
 function closedDistanceFor(width: number, height: number) {
   const aspect = width / Math.max(height, 1);
-  const hudReserve = THREE.MathUtils.clamp(260 / Math.max(height, 1), 0.3, 0.55);
+  const hudReserve = THREE.MathUtils.clamp(310 / Math.max(height, 1), 0.3, 0.58);
   return Math.max(CLOSED_MIN_DISTANCE, 2.3 / (FOV_TAN * aspect), 2.6 / (FOV_TAN * (1 - hudReserve)));
 }
 

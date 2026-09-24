@@ -237,7 +237,7 @@ export function getSerifFamily() {
   return value ? `${value}, Georgia, serif` : "Georgia, serif";
 }
 
-async function ensureFonts(family: string) {
+export async function ensureFonts(family: string) {
   if (!document.fonts) return;
   try {
     await Promise.all([
@@ -249,7 +249,7 @@ async function ensureFonts(family: string) {
   }
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = "";
@@ -292,7 +292,7 @@ function drawFleuron(ctx: CanvasRenderingContext2D, cx: number, cy: number, scal
   ctx.restore();
 }
 
-export async function createAnswerTexture(answer: string, pageNumber: number, bookTitle: string) {
+export async function createAnswerTexture(answer: string, pageNumber: number, bookTitle: string, question = "") {
   const family = getSerifFamily();
   await ensureFonts(family);
   const w = PAGE_TEXTURE_WIDTH;
@@ -348,9 +348,23 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
   const blockHeight = lines.length * lineHeight;
   const top = h * 0.42 - blockHeight / 2;
 
-  ctx.fillStyle = GOLD;
-  ctx.strokeStyle = GOLD;
-  traceBrandSymbol(ctx, w / 2, Math.max(260, top - 130), 150);
+  let questionBottom = 0;
+  if (question) {
+    ctx.fillStyle = RUBRIC;
+    ctx.font = `italic 600 48px ${family}`;
+    const questionLines = wrapText(ctx, `“${question}”`, 740).slice(0, 2);
+    questionLines.forEach((line, index) => {
+      ctx.fillText(line, w / 2, 262 + index * 58);
+    });
+    questionBottom = 262 + (questionLines.length - 1) * 58 + 36;
+  }
+
+  const symbolY = Math.max(260, top - 130);
+  if (!question || symbolY - 80 > questionBottom + 20) {
+    ctx.fillStyle = GOLD;
+    ctx.strokeStyle = GOLD;
+    traceBrandSymbol(ctx, w / 2, question ? Math.max(symbolY, questionBottom + 100) : symbolY, question ? 110 : 150);
+  }
 
   ctx.fillStyle = INK;
   ctx.font = `italic 500 ${size}px ${family}`;

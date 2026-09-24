@@ -337,7 +337,7 @@ export function BookModel({ theme }: BookModelProps) {
   }, [assets, locale]);
 
   const loadAnswer = (answer: PickedAnswer) => {
-    createAnswerTexture(answer.text, answer.page, answer.bookTitle)
+    createAnswerTexture(answer.text, answer.page, answer.bookTitle, answer.question)
       .then((texture) => {
         if (lastAnswer.current !== answer) {
           texture.dispose();
