@@ -1,8 +1,9 @@
-import { BRAND_NAME_UPPER } from "@/lib/brand";
+import { BRAND_NAME_UPPER, siteUrl } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
 import { getSoundStream } from "@/lib/sound";
 import { traceBrandSymbol } from "@/lib/textures/brand-symbol";
 import { getSerifFamily } from "@/lib/textures/page-textures";
+import { fillSpacedText } from "@/lib/textures/procedural";
 
 export type StoryVideo = {
   blob: Blob;
@@ -73,9 +74,7 @@ function createOverlay(bookTitle: string) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `500 34px ${family}`;
-  ctx.letterSpacing = "14px";
-  ctx.fillText(BRAND_NAME_UPPER, STORY_WIDTH / 2 + 7, 186);
-  ctx.letterSpacing = "0px";
+  fillSpacedText(ctx, BRAND_NAME_UPPER, STORY_WIDTH / 2, 186, 14);
   ctx.fillStyle = "rgba(239,227,200,0.9)";
   ctx.font = `italic 500 28px ${family}`;
   ctx.fillText(bookTitle, STORY_WIDTH / 2, 228);
@@ -83,13 +82,11 @@ function createOverlay(bookTitle: string) {
   ctx.fillStyle = "rgba(239,227,200,0.85)";
   ctx.font = `italic 500 30px ${family}`;
   ctx.fillText(getMessages().tagline, STORY_WIDTH / 2, STORY_HEIGHT - 110);
-  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  const site = siteUrl();
   if (site) {
     ctx.fillStyle = "rgba(201,162,75,0.9)";
     ctx.font = `500 22px ${family}`;
-    ctx.letterSpacing = "4px";
-    ctx.fillText(site.replace(/^https?:\/\//, ""), STORY_WIDTH / 2, STORY_HEIGHT - 62);
-    ctx.letterSpacing = "0px";
+    fillSpacedText(ctx, site.replace(/^https?:\/\//, ""), STORY_WIDTH / 2, STORY_HEIGHT - 62, 4);
   }
   return canvas;
 }

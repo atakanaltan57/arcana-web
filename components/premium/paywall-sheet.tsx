@@ -6,6 +6,7 @@ import type { Book } from "@/lib/books";
 import { PLAN_IDS, type PlanId } from "@/lib/pricing";
 import { useMessages } from "@/lib/i18n/locale-store";
 import { ArcanaSeal } from "@/components/brand/arcana-seal";
+import { BRAND_NAME } from "@/lib/brand";
 
 type PaywallSheetProps = {
   book: Book;
@@ -56,7 +57,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
           type="button"
           onClick={onClose}
           aria-label={messages.close}
-          className="focus-ring absolute right-3 top-3 grid size-11 place-items-center rounded-full text-parchment/70 transition-colors hover:text-parchment"
+          className="icon-btn focus-ring absolute right-3 top-3"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
             <path d="M6 6l12 12M18 6L6 18" />
@@ -67,7 +68,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
           <ArcanaSeal className="size-16" />
         </div>
         <div className="flex flex-col gap-1.5">
-          <p className="text-micro uppercase text-gold-bright/85">{copy.name}</p>
+          <p className="text-micro uppercase text-gold-bright/85">{copy.name(BRAND_NAME)}</p>
           <h2 id="paywall-title" className="font-serif text-3xl text-parchment">
             {copy.sealed(messages.books[book.id].title)}
           </h2>
@@ -76,7 +77,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
 
         <ul className="flex w-full flex-col gap-2.5 text-left">
           {copy.benefits.map((benefit) => (
-            <li key={benefit} className="flex items-start gap-3 text-[0.95rem] text-parchment/90">
+            <li key={benefit} className="text-hint flex items-start gap-3 text-parchment/90">
               <span className="mt-1.5 size-2 shrink-0 rotate-45 bg-gold-bright shadow-[0_0_6px_rgba(236,208,138,0.8)]" aria-hidden />
               {benefit}
             </li>
@@ -99,7 +100,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
                 }`}
               >
                 {option.note && (
-                  <span className="absolute -top-2.5 rounded-full bg-gold-bright px-2 py-0.5 text-[0.75rem] font-semibold text-[#2a1806]">
+                  <span className="absolute -top-2.5 rounded-full bg-gold-bright px-2.5 py-0.5 text-micro font-semibold text-[#2a1806] uppercase">
                     {option.note}
                   </span>
                 )}
@@ -112,7 +113,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
                 )}
                 <span className="text-label uppercase text-parchment/80">{option.label}</span>
                 <span className={`font-serif text-2xl ${active ? "text-gold-bright" : "text-parchment/80"}`}>{option.price}</span>
-                <span className="text-sm text-parchment/70">{option.period}</span>
+                <span className="text-sm text-parchment/80">{option.period}</span>
               </button>
             );
           })}
@@ -121,7 +122,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
         <button type="button" disabled className="btn-gold focus-ring w-full">
           {copy.soon}
         </button>
-        <p className="text-sm text-parchment/65">{copy.footnote}</p>
+        <p className="text-sm text-parchment/80">{copy.footnote}</p>
       </motion.div>
     </motion.div>
   );

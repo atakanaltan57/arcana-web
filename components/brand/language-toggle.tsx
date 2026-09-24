@@ -14,13 +14,13 @@ export function LanguageToggle() {
         localeStore.toggle();
       }}
       aria-label={messages.switchLanguage}
-      className="focus-ring pointer-events-auto flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-label uppercase text-parchment/85 transition-colors hover:text-gold-bright"
+      className="focus-ring pointer-events-auto flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-label text-parchment/85 transition-colors hover:text-gold-bright"
     >
-      <span className={messages.locale === "tr" ? "text-gold-bright" : "opacity-55"}>TR</span>
+      <span className={messages.locale === "tr" ? "text-gold-bright" : "opacity-70"}>TR</span>
       <span className="opacity-40" aria-hidden>
         /
       </span>
-      <span className={messages.locale === "en" ? "text-gold-bright" : "opacity-55"}>EN</span>
+      <span className={messages.locale === "en" ? "text-gold-bright" : "opacity-70"}>EN</span>
     </button>
   );
 }

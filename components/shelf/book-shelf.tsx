@@ -21,7 +21,7 @@ function Arrow({ direction, onStep }: { direction: 1 | -1; onStep: (direction: 1
       onPointerDown={stopPointer}
       onClick={() => onStep(direction)}
       aria-label={direction === 1 ? messages.shelf.next : messages.shelf.previous}
-      className={`focus-ring pointer-events-auto absolute top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-parchment/15 bg-black/40 text-parchment/85 backdrop-blur-sm transition-colors hover:border-gold/50 hover:text-gold-bright ${
+      className={`icon-btn focus-ring pointer-events-auto absolute top-1/2 -translate-y-1/2 border border-parchment/15 bg-black/40 backdrop-blur-sm hover:border-gold/50 ${
         direction === 1 ? "right-3 sm:right-6" : "left-3 sm:left-6"
       }`}
     >

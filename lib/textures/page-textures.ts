@@ -4,7 +4,7 @@ import { drawCipherBlock, drawGlyph, drawGlyphRow } from "./cipher-text";
 import { BRAND_NAME_UPPER } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
 import { traceBrandSymbol } from "./brand-symbol";
-import { canvasToTexture, createCanvas, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
+import { canvasToTexture, createCanvas, fillSpacedText, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
 
 export const PAGE_TEXTURE_WIDTH = 1024;
 export const PAGE_TEXTURE_HEIGHT = 1434;
@@ -189,7 +189,7 @@ export function createPrintedPageTexture(seed: number) {
   ctx.fillStyle = rubric;
   ctx.strokeStyle = rubric;
   drawGlyphRow(ctx, CIPHER_HEADER_TOKENS, w / 2, 20, 18, rand);
-  ctx.font = "600 17px Georgia, 'Times New Roman', serif";
+  ctx.font = `600 17px ${getSerifFamily()}`;
   ctx.textAlign = "center";
   ctx.fillText(toRoman(12 + (seed % 90)), w - 88, 34);
 
@@ -333,9 +333,7 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
 
   ctx.fillStyle = RUBRIC;
   ctx.font = `600 40px ${family}`;
-  ctx.letterSpacing = "16px";
-  ctx.fillText(BRAND_NAME_UPPER, w / 2 + 8, 116);
-  ctx.letterSpacing = "0px";
+  fillSpacedText(ctx, BRAND_NAME_UPPER, w / 2, 116, 16);
 
   let size = 88;
   let lines: string[] = [];

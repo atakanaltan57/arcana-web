@@ -2,10 +2,12 @@ import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
 import { traceBrandGem, traceBrandSymbol } from "./brand-symbol";
 import { drawThemedTooling } from "./cover-designs";
+import { getSerifFamily } from "./page-textures";
 import {
   alphaField,
   canvasToTexture,
   createCanvas,
+  fillSpacedText,
   heightToNormalCanvas,
   seededRandom,
   smoothNoiseField,
@@ -493,9 +495,8 @@ export function createSpineTextures(theme: BookTheme, title: string): SpineTextu
   g.scale(1.95, 1);
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.font = "600 58px Georgia, 'Times New Roman', serif";
-  g.letterSpacing = "6px";
-  g.fillText(title, 0, 0);
+  g.font = `600 58px ${getSerifFamily()}`;
+  fillSpacedText(g, title, 0, 0, 6);
   g.restore();
   const star = (y: number) => {
     g.save();

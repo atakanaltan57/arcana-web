@@ -32,7 +32,7 @@ export function AwakeningVeil({ visible, label, background = "bg-[#050608]" }: A
           >
             <ArcanaSeal className="size-20" />
           </motion.div>
-          <p className="font-serif text-xl italic text-parchment/90">{label}</p>
+          <p className="font-serif text-2xl italic text-parchment/90">{label}</p>
           <div className="h-px w-36 overflow-hidden bg-gold/15">
             <div
               className="h-full origin-left bg-gradient-to-r from-gold/40 via-gold-bright to-gold/40 transition-transform duration-500"

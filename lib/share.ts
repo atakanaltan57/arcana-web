@@ -1,4 +1,4 @@
-import { BRAND_NAME } from "@/lib/brand";
+import { BRAND_NAME, shareUrl } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
 import type { StoryVideo } from "@/lib/story-recorder";
 
@@ -13,7 +13,10 @@ export const SHARE_LABELS: Record<ShareTarget, string> = {
 };
 
 export function shareText(answer: string) {
-  return getMessages().share.text(BRAND_NAME, answer);
+  const text = getMessages().share.text(BRAND_NAME, answer);
+  const url = shareUrl("answer");
+  return url ? `${text}
+${url}` : text;
 }
 
 export function downloadStory(video: StoryVideo) {

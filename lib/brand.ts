@@ -1,8 +1,26 @@
-export const BRAND_NAME = "ARCANA";
+import { tr } from "@/lib/i18n/messages/tr";
+
+export const BRAND_NAME = "Arcana";
 
 export const BRAND_NAME_UPPER = BRAND_NAME.toLocaleUpperCase("tr-TR");
 
-export const BRAND_TAGLINE = "Bilinmezin sesi, sırrın mührü";
+export const BRAND_TAGLINE = tr.tagline;
+
+export const BRAND_TITLE = `${BRAND_NAME} · ${tr.title}`;
+
+export const BRAND_DESCRIPTION = tr.description;
+
+export function siteUrl() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configured) return configured.replace(/\/$/, "");
+  if (typeof window !== "undefined") return window.location.origin;
+  return "";
+}
+
+export function shareUrl(source: string) {
+  const base = siteUrl();
+  return base ? `${base}/?utm_source=${source}&utm_medium=share` : "";
+}
 
 export const BRAND_SYMBOL_VIEWBOX = 100;
 

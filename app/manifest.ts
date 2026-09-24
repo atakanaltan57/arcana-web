@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_TITLE } from "@/lib/brand";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: `${BRAND_NAME} · ${BRAND_TAGLINE}`,
+    name: BRAND_TITLE,
     short_name: BRAND_NAME,
-    description: "Sorunu içinden geçir, parmağını kitaba koy. Kitap sana cevabını versin.",
+    description: BRAND_DESCRIPTION,
     start_url: "/",
     scope: "/",
     display: "standalone",

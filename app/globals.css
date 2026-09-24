@@ -21,7 +21,7 @@
   --font-serif: var(--font-cormorant);
   --font-sans: var(--font-manrope);
   --color-ink-page: #3e250d;
-  --text-micro: 0.75rem;
+  --text-micro: 0.8125rem;
   --text-micro--letter-spacing: 0.28em;
   --text-label: 0.8125rem;
   --text-label--letter-spacing: 0.22em;
@@ -95,20 +95,35 @@ a {
 
 @utility btn-ghost {
   display: inline-flex;
-  min-height: 2.75rem;
+  min-height: 3rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   border-radius: 9999px;
   border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
-  padding-inline: 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  padding-inline: 1.5rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: color-mix(in srgb, var(--gold-bright) 92%, transparent);
   transition: background-color 300ms ease, border-color 300ms ease;
   &:hover {
     background-color: color-mix(in srgb, var(--gold) 12%, transparent);
     border-color: color-mix(in srgb, var(--gold) 70%, transparent);
+  }
+}
+
+@utility icon-btn {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 9999px;
+  color: color-mix(in srgb, var(--parchment) 85%, transparent);
+  transition: color 300ms ease, background-color 300ms ease;
+  &:hover {
+    color: var(--gold-bright);
+    background-color: rgb(255 255 255 / 0.05);
   }
 }

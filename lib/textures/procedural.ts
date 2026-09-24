@@ -11,6 +11,28 @@ export function createCanvas(width: number, height: number) {
   return { canvas, ctx };
 }
 
+export function fillSpacedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, spacing: number) {
+  const align = ctx.textAlign;
+  const centered = align === "center";
+  const supportsSpacing = typeof (ctx as { letterSpacing?: unknown }).letterSpacing === "string";
+  if (supportsSpacing) {
+    ctx.letterSpacing = `${spacing}px`;
+    ctx.fillText(text, centered ? x + spacing / 2 : x, y);
+    ctx.letterSpacing = "0px";
+    return;
+  }
+  const chars = [...text];
+  const widths = chars.map((char) => ctx.measureText(char).width);
+  const total = widths.reduce((sum, width) => sum + width, 0) + spacing * (chars.length - 1);
+  let cursor = centered ? x - total / 2 : align === "right" || align === "end" ? x - total : x;
+  ctx.textAlign = "left";
+  chars.forEach((char, index) => {
+    ctx.fillText(char, cursor, y);
+    cursor += widths[index] + spacing;
+  });
+  ctx.textAlign = align;
+}
+
 export function seededRandom(seed: number) {
   let a = seed >>> 0;
   return () => {

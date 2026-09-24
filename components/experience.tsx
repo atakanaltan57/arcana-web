@@ -19,6 +19,7 @@ import { StorySheet } from "@/components/share/story-sheet";
 import { PageActions } from "@/components/share/page-actions";
 import { PortalVeil } from "@/components/transition/portal-veil";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { BRAND_NAME } from "@/lib/brand";
 import { AwakeningVeil } from "@/components/brand/awakening-veil";
 import { BookShelf } from "@/components/shelf/book-shelf";
 import { PaywallSheet } from "@/components/premium/paywall-sheet";
@@ -92,7 +93,7 @@ function SoundToggle() {
       onClick={toggle}
       onPointerDown={(event) => event.stopPropagation()}
       aria-label={on ? messages.sound.off : messages.sound.on}
-      className="focus-ring pointer-events-auto grid size-11 place-items-center rounded-full text-parchment/85 transition-colors hover:text-gold-bright"
+      className="icon-btn focus-ring pointer-events-auto"
     >
       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
         <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
@@ -136,6 +137,10 @@ export function Experience() {
     localeStore.hydrate();
     bookStore.hydrate();
   }, []);
+
+  useEffect(() => {
+    document.title = `${BRAND_NAME} · ${messages.title}`;
+  }, [messages.title]);
 
   const selectBook = useCallback((next: Book) => bookStore.select(next.id), []);
   const stepBook = useCallback((direction: 1 | -1) => bookStore.step(direction), []);
@@ -324,23 +329,26 @@ export function Experience() {
         <AnimatePresence mode="wait">
           {ready && phase === "idle" && (
             <motion.div key="idle" {...fade} transition={{ duration: 0.9, ease: "easeOut" }} className="flex w-full flex-col items-center gap-3">
-              <p className="text-balance font-serif text-[clamp(1.5rem,7vw,1.8rem)] italic leading-snug text-parchment [text-shadow:0_2px_16px_rgba(0,0,0,0.8)] sm:text-4xl">
+              <p className="text-balance font-serif text-[clamp(1.5rem,5vw,2.25rem)] italic leading-snug text-parchment [text-shadow:0_2px_16px_rgba(0,0,0,0.8)]">
                 {locked ? messages.home.lockedPrompt(bookText.title) : messages.home.prompt}
               </p>
               {bookError ? (
-                <button
-                  type="button"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={() => bookStore.select(book.id)}
-                  className="btn-ghost focus-ring pointer-events-auto"
-                >
-                  {messages.home.loadError}
-                </button>
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-hint [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">{messages.home.loadError}</p>
+                  <button
+                    type="button"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() => bookStore.select(book.id)}
+                    className="btn-ghost focus-ring pointer-events-auto"
+                  >
+                    {messages.home.retry}
+                  </button>
+                </div>
               ) : (
                 <p className="text-hint text-balance [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
                   {locked ? messages.home.lockedHint : answers ? messages.home.touchHint : messages.home.loadingPages}
                   {!locked && answers && (
-                    <span className="hidden text-parchment-dim/80 [@media(hover:hover)]:inline">{messages.home.keyHint}</span>
+                    <span className="hidden text-parchment/70 [@media(hover:hover)]:inline">{messages.home.keyHint}</span>
                   )}
                 </p>
               )}
@@ -373,7 +381,7 @@ export function Experience() {
           )}
 
           {phase === "closing" && shareTarget && (
-            <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">
+            <motion.p key="preparing" {...fade} transition={{ duration: 0.5 }} className="font-serif text-2xl italic text-gold-bright [text-shadow:0_2px_18px_rgba(0,0,0,0.95)]">
               {messages.home.preparingStory}
             </motion.p>
           )}

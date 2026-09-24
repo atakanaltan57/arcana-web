@@ -1,5 +1,5 @@
 import {
-  BRAND_NAME,
+  BRAND_NAME_UPPER,
   BRAND_SYMBOL_FILL_PATH,
   BRAND_SYMBOL_STROKE_PATH,
   BRAND_SYMBOL_STROKE_WIDTH,
@@ -68,7 +68,7 @@ export function BrandShareCard() {
       }}
     >
       <BrandSymbolImage size={220} />
-      <div style={{ fontSize: 84, letterSpacing: 28, color: "#ecd08a", paddingLeft: 28 }}>{BRAND_NAME}</div>
+      <div style={{ fontSize: 84, letterSpacing: 28, color: "#ecd08a", paddingLeft: 28 }}>{BRAND_NAME_UPPER}</div>
       <div style={{ fontSize: 36, fontStyle: "italic", color: "#efe3c8", opacity: 0.85 }}>{BRAND_TAGLINE}</div>
     </div>
   );

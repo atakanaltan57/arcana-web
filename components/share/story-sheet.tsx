@@ -106,7 +106,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
             <button
               type="button"
               onClick={() => downloadStory(video)}
-              className="btn-ghost focus-ring min-h-12! flex-1"
+              className="btn-ghost focus-ring flex-1"
             >
               {messages.story.download}
             </button>
@@ -114,7 +114,7 @@ export function StorySheet({ video, target, answer, onClose }: StorySheetProps) 
           <button
             type="button"
             onClick={onClose}
-            className="btn-ghost focus-ring min-h-12! flex-1 border-parchment/25! text-parchment/85!"
+            className="btn-ghost focus-ring flex-1"
           >
             {messages.close}
           </button>
