@@ -73,7 +73,7 @@ type InkPageOptions = {
   back?: THREE.Texture;
 };
 
-const burnChunk = /* glsl */ `
+export const burnChunk = /* glsl */ `
   float inkBurnDistance(vec2 uv) {
     vec2 delta = vec2(uv.x - uBurnOrigin.x, (uv.y - uBurnOrigin.y) * ${BURN_ASPECT.toFixed(2)});
     float key = length(delta) * 0.75 + inkFbm(uv * vec2(6.0, 8.4) + 3.1) * 0.45;
@@ -81,7 +81,7 @@ const burnChunk = /* glsl */ `
   }
 `;
 
-const noiseChunk = /* glsl */ `
+export const noiseChunk = /* glsl */ `
   float inkHash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
   }

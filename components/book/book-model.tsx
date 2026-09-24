@@ -35,6 +35,7 @@ import { playChime, playCrackle, playPortalRumble, playRustle, playTunnel, playW
 import { vibrate } from "@/lib/haptics";
 import { useLocale } from "@/lib/i18n/locale-store";
 import { BURN_DURATION, BURN_IGNITION, EmberParticles } from "./ember-particles";
+import { FlameFront } from "./flame-front";
 import { enhanceCoverMaterial } from "./cover-material";
 import { GemGlint, Starburst } from "./starburst";
 import { VortexDisc } from "./wormhole";
@@ -647,6 +648,13 @@ export function BookModel({ theme }: BookModelProps) {
         <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
       </mesh>
       <EmberParticles
+        pageMinX={pagesCenterX - width / 2}
+        pageMaxX={pagesCenterX + width / 2}
+        pageNearZ={depth / 2}
+        pageFarZ={-depth / 2}
+        pageY={axisY}
+      />
+      <FlameFront
         pageMinX={pagesCenterX - width / 2}
         pageMaxX={pagesCenterX + width / 2}
         pageNearZ={depth / 2}

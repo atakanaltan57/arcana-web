@@ -2,6 +2,7 @@
 
 import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { LoadProgressBridge } from "@/components/brand/load-progress-bridge";
+import { HeatHazeEffect, HeatTracker } from "./heat-haze";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -327,7 +328,14 @@ export default function BookScene({ bookId, onReady, onContextLost }: BookSceneP
   const [dpr, setDpr] = useState(1.5);
   const [effects, setEffects] = useState(true);
   const lens = useMemo(() => new BlackHoleLensEffect(), []);
-  useEffect(() => () => lens.dispose(), [lens]);
+  const heat = useMemo(() => new HeatHazeEffect(), []);
+  useEffect(
+    () => () => {
+      lens.dispose();
+      heat.dispose();
+    },
+    [lens, heat],
+  );
 
   return (
     <Canvas
@@ -378,12 +386,14 @@ export default function BookScene({ bookId, onReady, onContextLost }: BookSceneP
       <ContactShadows position={[0, 0.002, 0]} opacity={0.9} scale={14} blur={2.2} far={1.6} resolution={1024} color="#000000" />
       <DustParticles />
       <LensTracker effect={lens} center={DROP_CAP_WORLD} horizonRadius={0.11} />
+      <HeatTracker effect={heat} />
       <WormholeTunnel />
       <LightShaft />
 
       {effects && (
         <EffectComposer multisampling={4}>
           <Bloom mipmapBlur intensity={0.75} luminanceThreshold={1} luminanceSmoothing={0.25} />
+          <primitive object={heat} dispose={null} />
           <primitive object={lens} dispose={null} />
           <ToneMapping mode={ToneMappingMode.AGX} />
           <Noise opacity={0.025} />
