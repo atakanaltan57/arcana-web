@@ -10,10 +10,12 @@ export const BRAND_TITLE = `${BRAND_NAME} · ${tr.title}`;
 
 export const BRAND_DESCRIPTION = tr.description;
 
+const LOCAL_HOST_PATTERN = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[::1\])/;
+
 export function siteUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
   if (configured) return configured.replace(/\/$/, "");
-  if (typeof window !== "undefined") return window.location.origin;
+  if (typeof window !== "undefined" && !LOCAL_HOST_PATTERN.test(window.location.hostname)) return window.location.origin;
   return "";
 }
 
