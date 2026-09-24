@@ -43,6 +43,7 @@ export const ritualMotion = {
   swapping: false,
   carouselDrag: 0,
   tempo: 1,
+  portalLocked: false,
 };
 
 function resetMotion() {
@@ -117,7 +118,7 @@ export const ritualStore = {
     emit({ phase: "idle", answer: null });
   },
   enterPortal() {
-    if (snapshot.phase !== "closing" || !ritualMotion.portalReady) return false;
+    if (snapshot.phase !== "closing" || !ritualMotion.portalReady || ritualMotion.portalLocked) return false;
     ritualMotion.portalReady = false;
     ritualMotion.tempo = 1;
     emit({ phase: "portal", answer: snapshot.answer });

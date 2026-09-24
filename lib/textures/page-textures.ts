@@ -4,7 +4,10 @@ import { drawCipherBlock, drawGlyph, drawGlyphRow } from "./cipher-text";
 import { BRAND_NAME_UPPER } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
 import { traceBrandSymbol } from "./brand-symbol";
-import { canvasToTexture, createCanvas, fillSpacedText, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
+import { canvasToTexture, createCanvas, heightToNormalCanvas, seededRandom, smoothNoiseField } from "./procedural";
+import { balanceLines, ensureFonts, fillSpacedText, getSerifFamily, keepDashWithNextWord, wrapText } from "./canvas-text";
+
+export { getSerifFamily };
 
 export const PAGE_TEXTURE_WIDTH = 1024;
 export const PAGE_TEXTURE_HEIGHT = 1434;
@@ -70,15 +73,15 @@ export function createPageEdgeTexture() {
   const height = 256;
   const { canvas, ctx } = createCanvas(width, height);
   const rand = seededRandom(21);
-  ctx.fillStyle = "rgb(188,150,86)";
+  ctx.fillStyle = "rgb(226,204,152)";
   ctx.fillRect(0, 0, width, height);
   let y = 0;
   while (y < height) {
     const leaf = 3 + Math.floor(rand() * 3);
-    const tone = 0.85 + rand() * 0.3;
-    ctx.fillStyle = `rgb(${Math.round(196 * tone)},${Math.round(160 * tone)},${Math.round(94 * tone)})`;
+    const tone = 0.9 + rand() * 0.14;
+    ctx.fillStyle = `rgb(${Math.min(255, Math.round(236 * tone))},${Math.min(255, Math.round(212 * tone))},${Math.round(160 * tone)})`;
     ctx.fillRect(0, y, width, leaf - 1);
-    ctx.fillStyle = `rgba(92,62,28,${0.55 + rand() * 0.3})`;
+    ctx.fillStyle = `rgba(120,86,44,${0.35 + rand() * 0.25})`;
     ctx.fillRect(0, y + leaf - 1, width, 1);
     y += leaf;
   }
@@ -231,40 +234,8 @@ export function createPrintedPageTexture(seed: number) {
   return canvasToTexture(canvas, true);
 }
 
-export function getSerifFamily() {
-  if (typeof document === "undefined") return "Georgia, serif";
-  const value = getComputedStyle(document.body).getPropertyValue("--font-cormorant").trim();
-  return value ? `${value}, Georgia, serif` : "Georgia, serif";
-}
 
-export async function ensureFonts(family: string) {
-  if (!document.fonts) return;
-  try {
-    await Promise.all([
-      document.fonts.load(`italic 500 80px ${family}`),
-      document.fonts.load(`500 40px ${family}`),
-    ]);
-  } catch (error) {
-    console.error("Font could not be loaded for page text", error);
-  }
-}
 
-export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (ctx.measureText(candidate).width > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
 
 const INK = "rgb(255,0,0)";
 const RUBRIC = "rgb(0,255,0)";
@@ -304,9 +275,19 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
   ctx.textBaseline = "middle";
 
   const decorRand = seededRandom(pageNumber);
-  drawRules(ctx, w, h, 64, "rgba(0,255,0,0.5)", 1.6);
-  if (golden) drawRules(ctx, w, h, 40, "rgba(0,0,255,0.95)", 5);
-  ctx.fillStyle = "rgba(0,255,0,0.6)";
+  drawRules(ctx, w, h, 64, golden ? "rgba(0,0,255,0.9)" : "rgba(0,255,0,0.5)", golden ? 3 : 1.6);
+  if (golden) {
+    drawRules(ctx, w, h, 34, "rgba(0,0,255,1)", 7);
+    ctx.fillStyle = GOLD;
+    for (const [cx, cy] of [[34, 34], [w - 34, 34], [34, h - 34], [w - 34, h - 34]]) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-16, -16, 32, 32);
+      ctx.restore();
+    }
+  }
+  ctx.fillStyle = golden ? GOLD : "rgba(0,255,0,0.6)";
   for (const [cx, cy, sx, sy] of [
     [64, 64, 1, 1],
     [w - 64, 64, -1, 1],
@@ -336,13 +317,13 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
   ctx.font = `600 40px ${family}`;
   fillSpacedText(ctx, BRAND_NAME_UPPER, w / 2, 116, 16);
 
-  let size = 88;
+  let size = 100;
   let lines: string[] = [];
   do {
     ctx.font = `italic 500 ${size}px ${family}`;
-    lines = wrapText(ctx, answer, 720);
+    lines = balanceLines(ctx, keepDashWithNextWord(answer), 780);
     size -= 4;
-  } while (lines.length > 4 && size > 48);
+  } while (lines.length > 3 && size > 56);
   size += 4;
 
   const lineHeight = size * 1.22;
@@ -394,7 +375,7 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
   ctx.fill();
 
   ctx.fillStyle = "rgba(255,0,0,0.7)";
-  ctx.font = `italic 500 32px ${family}`;
+  ctx.font = `italic 500 40px ${family}`;
   const footer = golden ? getMessages().golden.label : bookTitle;
   ctx.fillText(`— ${footer} · ${toRoman(pageNumber)} —`, w / 2, h - 96);
 

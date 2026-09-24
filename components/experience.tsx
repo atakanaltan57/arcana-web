@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { CHARGE_SECONDS, QUESTION_MAX_LENGTH, ritualMotion, ritualStore } from "@/lib/ritual-store";
@@ -10,6 +11,8 @@ import { vibrate } from "@/lib/haptics";
 import {
   cancelStoryRecording,
   isStoryRecordingSupported,
+  pauseStoryRecording,
+  resumeStoryRecording,
   startStoryRecording,
   stopStoryRecording,
   type StoryVideo,
@@ -34,6 +37,16 @@ import type { Book } from "@/lib/books";
 
 function clampValue(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function supportsWebGL() {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+  } catch (error) {
+    console.error("WebGL check failed", error);
+    return false;
+  }
 }
 
 function isControlTarget(target: EventTarget | null) {
@@ -114,6 +127,8 @@ function SoundToggle() {
 
 export function Experience() {
   const [ready, setReady] = useState(false);
+  const [webgl, setWebgl] = useState(true);
+  const [sceneKey, setSceneKey] = useState(0);
   const [videoPending, setVideoPending] = useState(false);
   const [sharing, setSharing] = useState<ShareKind | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -123,6 +138,8 @@ export function Experience() {
   const [paywall, setPaywall] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const answerRef = useRef<PickedAnswer | null>(null);
+  const cardRef = useRef<{ answer: PickedAnswer; card: Promise<Blob> } | null>(null);
+  const askAgainRef = useRef<HTMLButtonElement>(null);
   const previousPhase = useRef<string>("idle");
   const { phase, answer } = useSyncExternalStore(
     ritualStore.subscribe,
@@ -142,6 +159,14 @@ export function Experience() {
   useEffect(() => {
     localeStore.hydrate();
     bookStore.hydrate();
+    setWebgl(supportsWebGL());
+  }, []);
+
+  const rebuildScene = useCallback(() => {
+    cancelStoryRecording();
+    ritualStore.reset();
+    setReady(false);
+    setSceneKey((key) => key + 1);
   }, []);
 
   useEffect(() => {
@@ -171,6 +196,10 @@ export function Experience() {
   useEffect(() => {
     if (phase === "revealed" && answer && answerRef.current !== answer) {
       answerRef.current = answer;
+      pauseStoryRecording();
+      const card = createAnswerCard({ answer: answer.text, question: answer.question, bookTitle: answer.bookTitle, golden: answer.golden });
+      card.catch((error: unknown) => console.error("Answer card could not be prepared", error));
+      cardRef.current = { answer, card };
       const daily = recordDailyPage();
       const copy = getMessages();
       if (answer.golden) {
@@ -214,7 +243,8 @@ export function Experience() {
     setSharing("image");
     setNotice(null);
     try {
-      const card = await createAnswerCard({ answer: current.text, question: current.question, bookTitle: current.bookTitle, golden: current.golden });
+      const prepared = cardRef.current?.answer === current ? cardRef.current.card : null;
+      const card = await (prepared ?? createAnswerCard({ answer: current.text, question: current.question, bookTitle: current.bookTitle, golden: current.golden }));
       const outcome = await shareAnswerCard(card, current);
       if (outcome === "downloaded") setNotice(getMessages().share.imageSaved);
       if (outcome === "in-app") setNotice(getMessages().share.inApp);
@@ -260,6 +290,7 @@ export function Experience() {
       return;
     }
     setVideoPending(true);
+    resumeStoryRecording();
     ritualStore.close();
   };
 
@@ -269,7 +300,22 @@ export function Experience() {
   useEffect(() => {
     ritualStore.reset();
     document.body.style.cursor = "";
+    return () => {
+      cancelStoryRecording();
+      stopDrone();
+      ritualMotion.portalLocked = false;
+    };
   }, []);
+
+  useEffect(() => {
+    ritualMotion.portalLocked = videoPending;
+  }, [videoPending]);
+
+  useEffect(() => {
+    if (phase !== "revealed") return;
+    const timer = window.setTimeout(() => askAgainRef.current?.focus({ preventScroll: true }), 1600);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
 
   useEffect(() => {
     if (phase === "portal") {
@@ -296,6 +342,7 @@ export function Experience() {
         bookStore.step(event.key === "ArrowRight" ? 1 : -1);
         return;
       }
+      if (event.isComposing) return;
       if (event.target instanceof HTMLInputElement) {
         if (event.key !== "Enter") return;
         event.preventDefault();
@@ -372,10 +419,16 @@ export function Experience() {
       onPointerLeave={releaseDrag}
     >
       <div ref={stageRef} className="absolute inset-0">
-        <BookScene bookId={book.id} onReady={() => setReady(true)} />
+        {webgl ? (
+          <BookScene key={sceneKey} bookId={book.id} onReady={() => setReady(true)} onContextLost={rebuildScene} />
+        ) : (
+          <div className="flex h-full items-center justify-center px-8 text-center">
+            <p className="max-w-sm font-serif text-2xl italic text-parchment/90">{messages.home.noWebgl}</p>
+          </div>
+        )}
       </div>
 
-      <AwakeningVeil visible={!ready} label={messages.home.awakening} />
+      <AwakeningVeil visible={!ready && webgl} label={messages.home.awakening} />
 
       <motion.header
         className="pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-[1fr_auto_1fr] items-center px-3 pt-[max(env(safe-area-inset-top),1.25rem)] sm:px-8"
@@ -384,7 +437,7 @@ export function Experience() {
         transition={{ duration: 1.2, ease: "easeOut" }}
       >
         <div className="justify-self-start">
-          <LanguageToggle />
+          <LanguageToggle disabled={phase !== "idle"} />
         </div>
         <BrandMark as="h1" />
         <div className="justify-self-end">
@@ -458,6 +511,16 @@ export function Experience() {
                 animate={{ opacity: [0.2, 1, 0.2], scaleX: [0.6, 1.4, 0.6] }}
                 transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
               />
+              <p className="text-xs text-parchment/70 [text-shadow:0_1px_6px_rgba(0,0,0,0.9)]">
+                {messages.privacy.footer} ·{" "}
+                <Link
+                  href="/gizlilik"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  className="pointer-events-auto underline decoration-parchment/40 underline-offset-2 hover:text-parchment"
+                >
+                  {messages.privacy.link}
+                </Link>
+              </p>
             </motion.div>
           )}
 
@@ -482,6 +545,7 @@ export function Experience() {
               )}
               <button
                 type="button"
+                ref={askAgainRef}
                 onClick={askAgain}
                 onPointerDown={(event) => event.stopPropagation()}
                 className="btn-gold focus-ring pointer-events-auto"

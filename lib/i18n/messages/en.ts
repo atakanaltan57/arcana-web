@@ -23,6 +23,7 @@ export const en: Messages = {
     listening: "The book is listening…",
     preparingStory: "Preparing your story…",
     askAgain: "Ask a new question",
+    noWebgl: "Your browser can't open this book's 3D pages. Try again in an up-to-date Chrome or Safari.",
     questionLabel: "Your question",
     questionPlaceholder: "Type your question (optional)",
     answerAnnouncement: (answer: string) => `The book answers: ${answer}`,
@@ -35,7 +36,7 @@ export const en: Messages = {
     lockedSuffix: " (sealed)",
   },
   books: {
-    genel: { title: "Book of Answers", subtitle: "For every question" },
+    genel: { title: "Book of Answers", subtitle: "A page for every question" },
     ask: { title: "Book of Love", subtitle: "Questions of the heart" },
     yol: { title: "Book of Paths", subtitle: "Work and decisions" },
     kader: { title: "Book of Fate", subtitle: "Destiny and signs" },
@@ -121,9 +122,48 @@ export const en: Messages = {
     intro: (brand: string) => `${brand} answered this question`,
     introNoQuestion: (brand: string) => `${brand} answered`,
     cta: "Ask yours",
+    explainer: "Six ancient books. Hold your question, touch the book.",
     note: "For entertainment only.",
     title: (answer: string) => `“${answer}”`,
     description: (question: string) => (question ? `The answer to “${question}”. Ask the book yourself.` : "The book's answer. Ask it yourself."),
+  },
+  notFound: {
+    title: "This page isn't in the book.",
+    body: "The page you're looking for was torn out or never written.",
+    back: "Back to the book",
+  },
+  privacy: {
+    link: "Privacy",
+    footer: "For entertainment only",
+    title: "Privacy Notice",
+    updated: "Last updated: 24 September 2026",
+    back: "Back to the book",
+    sections: [
+      {
+        heading: "What is Arcana?",
+        body: "Arcana is an entertainment app that gives randomly chosen answers. It is not fortune-telling or advice, and its answers shouldn't be used as the basis for any decision.",
+      },
+      {
+        heading: "What is stored?",
+        body: "You don't create an account and you don't send us personal data. Your language, sound setting, recent answers (so they don't repeat), daily streak, broken seals and chosen book are stored only in your own browser (localStorage). They never reach our servers, and you can remove them any time by clearing your browser data.",
+      },
+      {
+        heading: "Your questions",
+        body: "The question you type stays on your device. Only when you choose to share is it added to the link you share, and anyone with that link can read it. Please don't write sensitive information.",
+      },
+      {
+        heading: "Cookies and measurement",
+        body: "We don't use cookies. To understand visits and page speed we use Vercel Analytics and Speed Insights, which measure without cookies or identifiers; no profile of you is created.",
+      },
+      {
+        heading: "Hosting and international transfer",
+        body: "The site is hosted on Vercel Inc. (USA). As with any website, connection logs such as IP addresses may be kept by Vercel for a limited time for technical security.",
+      },
+      {
+        heading: "Your rights and contact",
+        body: "For any question about your data rights, write to us: atakanaltan57@gmail.com",
+      },
+    ],
   },
   errorPage: {
     title: "The book did not open this time.",

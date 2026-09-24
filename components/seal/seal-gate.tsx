@@ -8,6 +8,7 @@ import { SEAL_COUNT, findSeal, saveBrokenSeal } from "@/lib/seals";
 import { BRAND_NAME, shareUrl } from "@/lib/brand";
 import { getMessages, useMessages } from "@/lib/i18n/locale-store";
 import { LanguageToggle } from "@/components/brand/language-toggle";
+import { copyText } from "@/lib/share";
 import { BrandMark } from "@/components/brand/brand-mark";
 
 type Status =
@@ -39,8 +40,8 @@ export async function shareSeals(count: number) {
       await navigator.share({ text: message });
       return null;
     }
-    await navigator.clipboard.writeText(message);
-    return getMessages().gate.copied;
+    if (await copyText(message)) return getMessages().gate.copied;
+    return getMessages().gate.shareFailed;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") return null;
     console.error("Seal share failed", error);

@@ -21,6 +21,7 @@ export const tr = {
     listening: "Kitap seni dinliyor…",
     preparingStory: "Hikâyen hazırlanıyor…",
     askAgain: "Yeni soru sor",
+    noWebgl: "Tarayıcın bu kitabın 3D sayfalarını açamıyor. Güncel Chrome ya da Safari ile yeniden dene.",
     questionLabel: "Sorun",
     questionPlaceholder: "Sorunu yaz (isteğe bağlı)",
     answerAnnouncement: (answer: string) => `Kitabın cevabı: ${answer}`,
@@ -33,7 +34,7 @@ export const tr = {
     lockedSuffix: " (mühürlü)",
   },
   books: {
-    genel: { title: "Cevaplar Kitabı", subtitle: "Her soruya" },
+    genel: { title: "Cevaplar Kitabı", subtitle: "Her soruya bir sayfa" },
     ask: { title: "Aşk Kitabı", subtitle: "Kalbin soruları" },
     yol: { title: "Yol Kitabı", subtitle: "İş ve kararlar" },
     kader: { title: "Kader Kitabı", subtitle: "Yazgı ve işaretler" },
@@ -119,9 +120,48 @@ export const tr = {
     intro: (brand: string) => `${brand} bu soruya şöyle cevap verdi`,
     introNoQuestion: (brand: string) => `${brand} şöyle cevap verdi`,
     cta: "Sen de sor",
+    explainer: "6 kadim kitap. Sorunu düşün, kitaba dokun.",
     note: "Eğlence amaçlıdır.",
     title: (answer: string) => `“${answer}”`,
     description: (question: string) => (question ? `“${question}” sorusunun cevabı. Sen de kitaba sor.` : "Kitabın cevabı. Sen de kitaba sor."),
+  },
+  notFound: {
+    title: "Bu sayfa kitapta yok.",
+    body: "Aradığın sayfa yırtılmış ya da hiç yazılmamış olabilir.",
+    back: "Kitaba dön",
+  },
+  privacy: {
+    link: "Gizlilik",
+    footer: "Eğlence amaçlıdır",
+    title: "Gizlilik ve KVKK Aydınlatma Metni",
+    updated: "Son güncelleme: 24 Eylül 2026",
+    back: "Kitaba dön",
+    sections: [
+      {
+        heading: "Arcana nedir?",
+        body: "Arcana, rastgele seçilen cevaplar veren bir eğlence uygulamasıdır. Fal, kehanet ya da tavsiye hizmeti değildir; verdiği cevaplar hiçbir konuda karar dayanağı olarak kullanılmamalıdır.",
+      },
+      {
+        heading: "Hangi bilgiler tutulur?",
+        body: "Hesap açmazsın ve bize kişisel bilgi göndermezsin. Dil tercihin, ses ayarın, son cevapların (tekrar etmemesi için), günlük serin, kırdığın mühürler ve seçtiğin kitap yalnızca kendi tarayıcında (localStorage) saklanır. Bu bilgiler sunucularımıza gelmez; tarayıcı verilerini silerek istediğin an kaldırabilirsin.",
+      },
+      {
+        heading: "Yazdığın sorular",
+        body: "Kitaba yazdığın soru cihazında kalır. Yalnızca sen paylaş dediğinde, paylaştığın bağlantının içine eklenir ve bağlantıyı gören herkes tarafından okunabilir. Hassas bilgi yazmamanı öneririz.",
+      },
+      {
+        heading: "Çerezler ve ölçüm",
+        body: "Çerez kullanmıyoruz. Ziyaret sayısını ve sayfa hızını anlamak için çerezsiz, kimliksiz ölçüm yapan Vercel Analytics ve Speed Insights kullanılır; seni tanımlayan bir profil oluşturulmaz.",
+      },
+      {
+        heading: "Barındırma ve yurt dışı aktarım",
+        body: "Site, Vercel Inc. (ABD) altyapısında barındırılır. Her web sitesinde olduğu gibi, teknik güvenlik için IP adresi gibi bağlantı kayıtları Vercel tarafından sınırlı süre tutulabilir. Siteyi kullanarak bu teknik aktarımı kabul etmiş olursun.",
+      },
+      {
+        heading: "Hakların ve iletişim",
+        body: "6698 sayılı KVKK kapsamındaki haklarınla ilgili her soru için bize yazabilirsin: atakanaltan57@gmail.com",
+      },
+    ],
   },
   errorPage: {
     title: "Kitap bu sefer açılmadı.",

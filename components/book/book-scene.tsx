@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { LoadProgressBridge } from "@/components/brand/load-progress-bridge";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -55,10 +56,11 @@ function CameraRig() {
     const aspect = size.width / Math.max(size.height, 1);
     const closedDistance = closedDistanceFor(size.width, size.height);
     const wide = aspect >= 1.05;
-    const halfWidth = wide ? 3.5 : 1.75;
+    const halfWidth = wide ? 3.5 : 1.56;
     const openDistance = Math.max(2.55 / FOV_TAN, halfWidth / (FOV_TAN * aspect));
-    const focusX = wide ? SPINE_X + 0.1 : 0.15;
-    return { closedDistance, openDistance, focusX };
+    const focusX = wide ? SPINE_X + 0.1 : 0.06;
+    const openZ = wide ? 0 : aspect < 0.62 ? 0.6 : 0.25;
+    return { closedDistance, openDistance, focusX, openZ };
   }, [size.width, size.height]);
 
   useFrame((state, delta) => {
@@ -85,6 +87,7 @@ function CameraRig() {
     scratch.opened.copy(OPEN_DIRECTION).multiplyScalar(poses.openDistance);
     scratch.opened.x += poses.focusX;
     scratch.opened.y += PAGE_Y;
+    scratch.opened.z += poses.openZ;
     scratch.position.lerpVectors(scratch.closed, scratch.opened, blend);
     const parallax = 1 - blend * 0.75;
     scratch.position.x += state.pointer.x * 0.35 * parallax;
@@ -93,7 +96,7 @@ function CameraRig() {
     scratch.target.set(
       THREE.MathUtils.lerp(0, poses.focusX, blend),
       THREE.MathUtils.lerp(0.2, PAGE_Y, blend),
-      0.05,
+      0.05 + poses.openZ * blend,
     );
 
     if (dive > 0) {
@@ -298,9 +301,28 @@ function ProceduralTable() {
 type BookSceneProps = {
   bookId: string;
   onReady: () => void;
+  onContextLost: () => void;
 };
 
-export default function BookScene({ bookId, onReady }: BookSceneProps) {
+type TableBoundaryState = { failed: boolean };
+
+class TableBoundary extends Component<{ children: ReactNode }, TableBoundaryState> {
+  state: TableBoundaryState = { failed: false };
+
+  static getDerivedStateFromError(): TableBoundaryState {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("Table textures failed; using procedural table", error);
+  }
+
+  render() {
+    return this.state.failed ? <ProceduralTable /> : this.props.children;
+  }
+}
+
+export default function BookScene({ bookId, onReady, onContextLost }: BookSceneProps) {
   const theme = findBook(bookId).theme;
   const [dpr, setDpr] = useState(1.5);
   const [effects, setEffects] = useState(true);
@@ -312,7 +334,14 @@ export default function BookScene({ bookId, onReady }: BookSceneProps) {
       dpr={dpr}
       gl={{ antialias: false, powerPreference: "high-performance", preserveDrawingBuffer: true }}
       camera={{ fov: 35, near: 0.1, far: 80, position: [0, 8.4, 6] }}
-      onCreated={() => onReady()}
+      onCreated={({ gl }) => {
+        gl.domElement.addEventListener("webglcontextlost", (event) => {
+          event.preventDefault();
+          console.error("WebGL context lost; rebuilding the scene");
+          onContextLost();
+        });
+        onReady();
+      }}
     >
       <PerformanceMonitor
         onIncline={() => setDpr(Math.min(2, window.devicePixelRatio))}
@@ -340,9 +369,11 @@ export default function BookScene({ bookId, onReady }: BookSceneProps) {
         <Lightformer form="rect" intensity={0.3} color="#6d7fe0" position={[6, 2, 3]} scale={[2, 6, 1]} target={[0, 0, 0]} />
       </Environment>
 
-      <Suspense fallback={<ProceduralTable />}>
-        <Table />
-      </Suspense>
+      <TableBoundary>
+        <Suspense fallback={<ProceduralTable />}>
+          <Table />
+        </Suspense>
+      </TableBoundary>
       <BookCarousel bookId={bookId} />
       <ContactShadows position={[0, 0.002, 0]} opacity={0.9} scale={14} blur={2.2} far={1.6} resolution={1024} color="#000000" />
       <DustParticles />
@@ -359,6 +390,7 @@ export default function BookScene({ bookId, onReady }: BookSceneProps) {
           <Vignette offset={0.3} darkness={0.8} />
         </EffectComposer>
       )}
+      <LoadProgressBridge />
     </Canvas>
   );
 }

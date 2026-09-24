@@ -46,32 +46,37 @@ export default async function SharedAnswerPage(props: AnswerPageProps) {
   return (
     <main
       lang={shared.locale}
-      className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-[radial-gradient(ellipse_at_50%_40%,#2a1a0c_0%,#0b0c10_65%)] px-6 py-12 text-center"
+      className="flex min-h-dvh flex-col items-center justify-center gap-10 bg-[radial-gradient(ellipse_at_50%_35%,#3a2412_0%,#140c07_55%,#060505_100%)] px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-[max(env(safe-area-inset-top),2rem)] text-center"
     >
-      <div className="flex flex-col items-center gap-3">
+      <header className="flex flex-col items-center gap-2">
         <div className="drop-shadow-[0_0_16px_rgba(236,208,138,0.4)]">
-          <ArcanaSeal className="size-16" />
+          <ArcanaSeal className="size-12" />
         </div>
         <p className="text-label font-medium uppercase text-gold-bright/90">{BRAND_NAME}</p>
-        <p className="font-serif text-lg italic text-parchment/85">{shared.bookTitle}</p>
-      </div>
+      </header>
 
-      <div className="flex max-w-xl flex-col items-center gap-6">
-        <p className="text-hint">{shared.question ? copy.intro(BRAND_NAME) : copy.introNoQuestion(BRAND_NAME)}</p>
+      <article className="relative w-full max-w-md rounded-[1.75rem] bg-[linear-gradient(160deg,#f3e6c6_0%,#e6d3a6_55%,#d6bd86_100%)] px-7 py-10 text-[#3e250d] shadow-[0_30px_80px_rgba(0,0,0,0.6),inset_0_0_60px_rgba(120,80,30,0.25)]">
+        <div className="pointer-events-none absolute inset-3 rounded-[1.35rem] border border-[#8a5a24]/35" aria-hidden />
+        <p className="font-serif text-base italic text-[#6a4a24]">{shared.bookTitle}</p>
         {shared.question && (
-          <p className="text-balance font-serif text-2xl italic text-parchment/90">“{shared.question}”</p>
+          <p className="mt-5 text-balance font-serif text-2xl italic text-[#7a1f16]">“{shared.question}”</p>
         )}
-        <span className="h-px w-40 bg-gradient-to-r from-transparent via-gold-bright to-transparent" aria-hidden />
-        <h1 className="text-balance font-serif text-4xl italic leading-tight text-gold-bright [text-shadow:0_2px_24px_rgba(236,208,138,0.25)] sm:text-5xl">
-          {shared.text}
-        </h1>
-      </div>
+        <span className="mx-auto mt-6 block h-px w-32 bg-gradient-to-r from-transparent via-[#8a5a24] to-transparent" aria-hidden />
+        <h1 className="mt-6 text-balance font-serif text-4xl italic leading-tight sm:text-5xl">{shared.text}</h1>
+        <p className="mt-6 text-sm text-[#6a4a24]">{shared.question ? copy.intro(BRAND_NAME) : copy.introNoQuestion(BRAND_NAME)}</p>
+      </article>
 
-      <div className="flex flex-col items-center gap-3">
-        <Link href={home} className="btn-gold focus-ring px-10">
+      <div className="flex w-full max-w-md flex-col items-center gap-4">
+        <p className="text-hint text-balance">{copy.explainer}</p>
+        <Link href={home} className="btn-gold focus-ring w-full min-h-14! text-xl!">
           {copy.cta}
         </Link>
-        <p className="text-sm text-parchment/80">{copy.note}</p>
+        <p className="text-xs text-parchment/70">
+          {copy.note} ·{" "}
+          <Link href="/gizlilik" className="underline decoration-parchment/40 underline-offset-2 hover:text-parchment">
+            {shared.messages.privacy.link}
+          </Link>
+        </p>
       </div>
     </main>
   );

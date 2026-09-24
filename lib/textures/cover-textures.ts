@@ -2,12 +2,11 @@ import * as THREE from "three";
 import type { BookTheme } from "@/lib/themes";
 import { traceBrandGem, traceBrandSymbol } from "./brand-symbol";
 import { drawThemedTooling } from "./cover-designs";
-import { getSerifFamily } from "./page-textures";
+import { fillSpacedText, getSerifFamily } from "./canvas-text";
 import {
   alphaField,
   canvasToTexture,
   createCanvas,
-  fillSpacedText,
   heightToNormalCanvas,
   seededRandom,
   smoothNoiseField,

@@ -52,6 +52,36 @@ function isAbort(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
+function isBlocked(error: unknown) {
+  return error instanceof DOMException && error.name === "NotAllowedError";
+}
+
+export async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      console.error("Clipboard write failed; trying fallback", error);
+    }
+  }
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.appendChild(field);
+  field.select();
+  try {
+    return document.execCommand("copy");
+  } catch (error) {
+    console.error("Clipboard fallback failed", error);
+    return false;
+  } finally {
+    field.remove();
+  }
+}
+
 async function shareFile(file: File, text: string): Promise<ShareOutcome> {
   if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
     try {
@@ -59,7 +89,8 @@ async function shareFile(file: File, text: string): Promise<ShareOutcome> {
       return "shared";
     } catch (error) {
       if (isAbort(error)) return "cancelled";
-      throw error;
+      if (!isBlocked(error)) throw error;
+      console.error("Share sheet was blocked; falling back to download", error);
     }
   }
   if (isInAppBrowser()) return "in-app";
@@ -77,8 +108,8 @@ async function shareTextOnly(text: string, url: string): Promise<ShareOutcome> {
       throw error;
     }
   }
-  await navigator.clipboard.writeText(url ? `${text}\n${url}` : text);
-  return "copied";
+  if (await copyText(url ? `${text}\n${url}` : text)) return "copied";
+  throw new Error("Nothing could share or copy the text");
 }
 
 export async function shareAnswerCard(card: Blob, answer: PickedAnswer): Promise<ShareOutcome> {

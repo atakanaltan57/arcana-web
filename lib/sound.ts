@@ -38,8 +38,8 @@ function getContext() {
       if (!Ctor) return null;
       context = new Ctor();
     }
-    if (context.state === "suspended") {
-      void context.resume();
+    if (context.state !== "running" && context.state !== "closed") {
+      context.resume().catch((error: unknown) => console.error("Audio context could not resume", error));
     }
     return context;
   } catch (error) {

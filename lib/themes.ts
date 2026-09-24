@@ -45,11 +45,11 @@ export const pathTheme: BookTheme = {
 export const fateTheme: BookTheme = {
   id: "kader",
   title: "Kader Kitabı",
-  cover: "#1c2548",
-  coverShade: "#070b1c",
-  gold: "#c6a85a",
-  goldDeep: "#5a4822",
-  goldLight: "#e6cf8c",
+  cover: "#271c4f",
+  coverShade: "#0b0822",
+  gold: "#d6b866",
+  goldDeep: "#6a5424",
+  goldLight: "#f2dc98",
   candle: "#ffc98a",
 };
 
@@ -67,10 +67,10 @@ export const moonTheme: BookTheme = {
 export const shadowTheme: BookTheme = {
   id: "golge",
   title: "Gölge Kitabı",
-  cover: "#1a1614",
-  coverShade: "#060504",
-  gold: "#a86c44",
-  goldDeep: "#4a2a16",
-  goldLight: "#d49468",
+  cover: "#262b35",
+  coverShade: "#090a0e",
+  gold: "#c48a5c",
+  goldDeep: "#5a3420",
+  goldLight: "#eab08a",
   candle: "#ff9a5a",
 };

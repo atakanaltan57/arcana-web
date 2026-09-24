@@ -80,7 +80,7 @@ export function BookShelf({ book, onSelect, onStep }: BookShelfProps) {
                   className={`block rotate-45 rounded-[1px] transition-all duration-300 ${
                     selected ? "size-2.5 shadow-[0_0_8px_rgba(236,208,138,0.9)]" : "size-1.5 opacity-60"
                   }`}
-                  style={{ background: canOpen(item) ? item.theme.goldLight : "transparent", boxShadow: canOpen(item) ? undefined : `inset 0 0 0 1.5px ${item.theme.goldLight}` }}
+                  style={{ background: canOpen(item) ? item.theme.goldLight : "transparent", boxShadow: canOpen(item) ? undefined : "inset 0 0 0 1.5px rgba(236,208,138,0.75)" }}
                 />
               </button>
             );

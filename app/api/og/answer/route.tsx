@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     ),
     {
       ...SIZE,
-      headers: { "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable" },
+      headers: { "Cache-Control": "public, max-age=3600, s-maxage=86400" },
     },
   );
 }

@@ -28,8 +28,20 @@ function isLocale(value: string): value is Locale {
   return value === "tr" || value === "en";
 }
 
+const BLOCKED_WORDS = new Set([
+  "amk", "aq", "amq", "sik", "sikik", "sikim", "göt", "götveren", "piç", "ibne", "gavat", "kahpe", "şerefsiz", "yavşak", "oç",
+  "fuck", "fucking", "shit", "bitch", "cunt", "whore", "slut", "faggot", "nigger", "nigga", "retard",
+]);
+const BLOCKED_STEMS = ["orospu", "siktir", "sikey", "amına", "amcık", "yarrak", "pezevenk", "fucker", "motherfuck"];
+
+function isOffensive(text: string) {
+  const tokens = text.toLocaleLowerCase("tr-TR").split(/[^\p{L}]+/u).filter(Boolean);
+  return tokens.some((token) => BLOCKED_WORDS.has(token) || BLOCKED_STEMS.some((stem) => token.startsWith(stem)));
+}
+
 export function cleanQuestion(value: string | null | undefined) {
-  return (value ?? "").replace(/\s+/g, " ").trim().slice(0, SHARED_QUESTION_MAX);
+  const question = (value ?? "").replace(/\s+/g, " ").trim().slice(0, SHARED_QUESTION_MAX);
+  return isOffensive(question) ? "" : question;
 }
 
 export function answerPath({ locale, bookId, index, question }: AnswerLinkInput) {

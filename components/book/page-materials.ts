@@ -138,14 +138,14 @@ export function createInkPageMaterial(
       float front = uProgress * 1.3 - 0.15;
       float shown = smoothstep(key - 0.03, key + 0.03, front);
       float wet = (1.0 - smoothstep(0.0, 0.09, abs(front - key))) * (1.0 - step(0.999, uProgress));
-      float grain = 0.85 + 0.15 * inkNoise(pageUv * 900.0);
+      float grain = 0.93 + 0.07 * inkNoise(pageUv * 900.0);
       vec3 backSample = texture2D(uBack, vec2(1.0 - pageUv.x, pageUv.y)).rgb;
       float backInk = clamp(1.0 - dot(backSample, vec3(0.333)) * 1.25, 0.0, 1.0);
       diffuseColor.rgb *= 1.0 - backInk * 0.08 * uHasBack;
 
-      vec3 inkColor = vec3(0.09, 0.055, 0.04);
-      vec3 rubricColor = vec3(0.46, 0.08, 0.06);
-      float inkAmount = clamp((glyph.r * shown + halo.r * wet * 0.5) * grain, 0.0, 0.95);
+      vec3 inkColor = vec3(0.055, 0.032, 0.022);
+      vec3 rubricColor = vec3(0.36, 0.05, 0.04);
+      float inkAmount = clamp((glyph.r * shown + halo.r * wet * 0.5) * grain, 0.0, 1.0);
       float rubricAmount = clamp((glyph.g * shown + halo.g * wet * 0.4) * grain, 0.0, 0.9);
       diffuseColor.rgb = mix(diffuseColor.rgb, inkColor, inkAmount);
       diffuseColor.rgb = mix(diffuseColor.rgb, rubricColor, rubricAmount);

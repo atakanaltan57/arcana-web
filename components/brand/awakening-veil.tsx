@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useProgress } from "@react-three/drei";
+import { useLoadProgress } from "@/lib/load-progress";
 import { ArcanaSeal } from "./arcana-seal";
 
 type AwakeningVeilProps = {
@@ -11,8 +11,7 @@ type AwakeningVeilProps = {
 };
 
 export function AwakeningVeil({ visible, label, background = "bg-[#050608]" }: AwakeningVeilProps) {
-  const progress = useProgress((state) => state.progress);
-  const loading = useProgress((state) => state.active);
+  const { progress, active: loading } = useLoadProgress();
 
   return (
     <AnimatePresence>

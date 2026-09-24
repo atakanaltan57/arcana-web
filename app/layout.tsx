@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_TAGLINE, BRAND_TITLE } from "@/lib/brand";
 
@@ -18,7 +20,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: BRAND_TITLE,
   description: BRAND_DESCRIPTION,
   applicationName: BRAND_NAME,
@@ -55,6 +57,8 @@ export default function RootLayout({
       <body className={`${cormorant.variable} ${manrope.variable} antialiased`}>
         {children}
         <RegisterServiceWorker />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

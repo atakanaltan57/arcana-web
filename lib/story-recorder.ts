@@ -2,8 +2,7 @@ import { BRAND_NAME_UPPER, siteUrl } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
 import { getSoundStream } from "@/lib/sound";
 import { traceBrandSymbol } from "@/lib/textures/brand-symbol";
-import { getSerifFamily, wrapText } from "@/lib/textures/page-textures";
-import { fillSpacedText } from "@/lib/textures/procedural";
+import { fillSpacedText, getSerifFamily, wrapText } from "@/lib/textures/canvas-text";
 
 export type StoryVideo = {
   blob: Blob;
@@ -28,7 +27,12 @@ type ActiveRecording = {
   mimeType: string;
   frame: number;
   timeout: number;
+  remaining: number;
+  resumedAt: number;
+  draw: () => void;
 };
+
+const STOP_TIMEOUT_MS = 3000;
 
 let active: ActiveRecording | null = null;
 
@@ -140,6 +144,9 @@ export function startStoryRecording(source: HTMLCanvasElement, bookTitle: string
       mimeType: recorder.mimeType || mimeType || "video/webm",
       frame: 0,
       timeout: 0,
+      remaining: MAX_SECONDS * 1000,
+      resumedAt: performance.now(),
+      draw: () => undefined,
     };
 
     const draw = () => {
@@ -156,22 +163,56 @@ export function startStoryRecording(source: HTMLCanvasElement, bookTitle: string
       }
       recording.frame = requestAnimationFrame(draw);
     };
+    recording.draw = draw;
     draw();
 
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) recording.chunks.push(event.data);
     };
     recorder.start(500);
-    recording.timeout = window.setTimeout(() => {
-      if (recorder.state === "recording") recorder.stop();
-      cancelAnimationFrame(recording.frame);
-    }, MAX_SECONDS * 1000);
     active = recording;
+    scheduleLimit(recording);
     return true;
   } catch (error) {
     console.error("Story recording could not start", error);
     return false;
   }
+}
+
+function scheduleLimit(recording: ActiveRecording) {
+  window.clearTimeout(recording.timeout);
+  recording.resumedAt = performance.now();
+  recording.timeout = window.setTimeout(() => {
+    if (recording.recorder.state !== "inactive") recording.recorder.stop();
+    cancelAnimationFrame(recording.frame);
+  }, Math.max(0, recording.remaining));
+}
+
+export function pauseStoryRecording() {
+  const recording = active;
+  if (!recording || recording.recorder.state !== "recording") return;
+  try {
+    recording.recorder.pause();
+  } catch (error) {
+    console.error("Story recording could not pause", error);
+    return;
+  }
+  window.clearTimeout(recording.timeout);
+  recording.remaining -= performance.now() - recording.resumedAt;
+  cancelAnimationFrame(recording.frame);
+}
+
+export function resumeStoryRecording() {
+  const recording = active;
+  if (!recording || recording.recorder.state !== "paused") return;
+  try {
+    recording.recorder.resume();
+  } catch (error) {
+    console.error("Story recording could not resume", error);
+    return;
+  }
+  recording.draw();
+  scheduleLimit(recording);
 }
 
 export function stopStoryRecording(): Promise<StoryVideo | null> {
@@ -181,7 +222,12 @@ export function stopStoryRecording(): Promise<StoryVideo | null> {
   window.clearTimeout(recording.timeout);
 
   return new Promise((resolve, reject) => {
+    let settled = false;
+    let guard = 0;
     const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(guard);
       cancelAnimationFrame(recording.frame);
       recording.recorder.stream.getVideoTracks().forEach((track) => track.stop());
       if (recording.chunks.length === 0) {
@@ -195,12 +241,21 @@ export function stopStoryRecording(): Promise<StoryVideo | null> {
         extension: type.includes("mp4") ? "mp4" : "webm",
       });
     };
-    recording.recorder.onerror = () => reject(new Error("Story recording failed"));
+    recording.recorder.onerror = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(guard);
+      reject(new Error("Story recording failed"));
+    };
     if (recording.recorder.state === "inactive") {
       finish();
       return;
     }
     recording.recorder.onstop = finish;
+    guard = window.setTimeout(() => {
+      console.error("Story recording did not stop in time; using available chunks");
+      finish();
+    }, STOP_TIMEOUT_MS);
     try {
       recording.recorder.stop();
     } catch (error) {

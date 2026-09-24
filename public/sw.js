@@ -1,4 +1,4 @@
-const VERSION = "arcana-v1";
+const VERSION = `arcana-${new URL(self.location.href).searchParams.get("v") || "v1"}`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const PRECACHE = ["/", "/muhur"];
@@ -54,7 +54,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (isStatic(url)) {
     event.respondWith(cacheFirst(request));
-  } else if (request.mode === "navigate") {
+  } else if (request.mode === "navigate" && !url.pathname.startsWith("/a/")) {
     event.respondWith(networkFirst(request));
   }
 });

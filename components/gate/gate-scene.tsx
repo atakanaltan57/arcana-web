@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { LoadProgressBridge } from "@/components/brand/load-progress-bridge";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -220,6 +221,7 @@ export default function GateScene({ broken, breaking, openAt, dimAt, onReady }: 
           <Vignette offset={0.3} darkness={0.62} />
         </EffectComposer>
       )}
+      <LoadProgressBridge />
     </Canvas>
   );
 }
