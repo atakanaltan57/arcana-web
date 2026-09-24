@@ -11,6 +11,7 @@ type AnswerCardInput = {
   answer: string;
   question: string;
   bookTitle: string;
+  golden: boolean;
 };
 
 function fitLines(ctx: CanvasRenderingContext2D, text: string, family: string, style: string, maxSize: number, minSize: number, maxWidth: number, maxLines: number) {
@@ -55,7 +56,7 @@ function drawDivider(ctx: CanvasRenderingContext2D, y: number) {
   ctx.restore();
 }
 
-export async function createAnswerCard({ answer, question, bookTitle }: AnswerCardInput): Promise<Blob> {
+export async function createAnswerCard({ answer, question, bookTitle, golden }: AnswerCardInput): Promise<Blob> {
   const family = getSerifFamily();
   await ensureFonts(family);
   const canvas = document.createElement("canvas");
@@ -80,6 +81,11 @@ export async function createAnswerCard({ answer, question, bookTitle }: AnswerCa
   ctx.fillStyle = "rgba(239,227,200,0.8)";
   ctx.font = `italic 500 38px ${family}`;
   ctx.fillText(bookTitle, CARD_WIDTH / 2, 470);
+  if (golden) {
+    ctx.fillStyle = "#ecd08a";
+    ctx.font = `600 34px ${family}`;
+    fillSpacedText(ctx, getMessages().golden.cardBadge.toLocaleUpperCase(getMessages().locale), CARD_WIDTH / 2, 540, 8);
+  }
 
   const answerFit = fitLines(ctx, answer, family, "italic 500", 128, 64, 880, 5);
   const answerLineHeight = answerFit.size * 1.2;
@@ -102,9 +108,17 @@ export async function createAnswerCard({ answer, question, bookTitle }: AnswerCa
   }
 
   const answerTop = blockTop + questionHeight;
-  ctx.fillStyle = "#f4e2b4";
-  ctx.shadowColor = "rgba(236,208,138,0.35)";
-  ctx.shadowBlur = 24;
+  if (golden) {
+    const shine = ctx.createLinearGradient(0, answerTop, 0, answerTop + answerHeight);
+    shine.addColorStop(0, "#fff0c2");
+    shine.addColorStop(0.5, "#e8c060");
+    shine.addColorStop(1, "#b8862c");
+    ctx.fillStyle = shine;
+  } else {
+    ctx.fillStyle = "#f4e2b4";
+  }
+  ctx.shadowColor = golden ? "rgba(255,210,120,0.6)" : "rgba(236,208,138,0.35)";
+  ctx.shadowBlur = golden ? 40 : 24;
   ctx.font = `italic 500 ${answerFit.size}px ${family}`;
   answerFit.lines.forEach((line, index) => {
     ctx.fillText(line, CARD_WIDTH / 2, answerTop + answerLineHeight * (index + 0.5));

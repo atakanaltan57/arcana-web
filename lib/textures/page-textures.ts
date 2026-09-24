@@ -292,7 +292,7 @@ function drawFleuron(ctx: CanvasRenderingContext2D, cx: number, cy: number, scal
   ctx.restore();
 }
 
-export async function createAnswerTexture(answer: string, pageNumber: number, bookTitle: string, question = "") {
+export async function createAnswerTexture(answer: string, pageNumber: number, bookTitle: string, question = "", golden = false) {
   const family = getSerifFamily();
   await ensureFonts(family);
   const w = PAGE_TEXTURE_WIDTH;
@@ -305,6 +305,7 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
 
   const decorRand = seededRandom(pageNumber);
   drawRules(ctx, w, h, 64, "rgba(0,255,0,0.5)", 1.6);
+  if (golden) drawRules(ctx, w, h, 40, "rgba(0,0,255,0.95)", 5);
   ctx.fillStyle = "rgba(0,255,0,0.6)";
   for (const [cx, cy, sx, sy] of [
     [64, 64, 1, 1],
@@ -366,6 +367,21 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
     traceBrandSymbol(ctx, w / 2, question ? Math.max(symbolY, questionBottom + 100) : symbolY, question ? 110 : 150);
   }
 
+  if (golden) {
+    ctx.fillStyle = GOLD;
+    ctx.fillRect(w / 2 - 220, top - 34, 440, 5);
+    ctx.fillRect(w / 2 - 220, top + blockHeight + 30, 440, 5);
+    for (const x of [w / 2 - 240, w / 2 + 240]) {
+      for (const y of [top - 32, top + blockHeight + 32]) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-9, -9, 18, 18);
+        ctx.restore();
+      }
+    }
+  }
+
   ctx.fillStyle = INK;
   ctx.font = `italic 500 ${size}px ${family}`;
   lines.forEach((line, index) => {
@@ -379,7 +395,8 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
 
   ctx.fillStyle = "rgba(255,0,0,0.7)";
   ctx.font = `italic 500 32px ${family}`;
-  ctx.fillText(`— ${bookTitle} · ${toRoman(pageNumber)} —`, w / 2, h - 96);
+  const footer = golden ? getMessages().golden.label : bookTitle;
+  ctx.fillText(`— ${footer} · ${toRoman(pageNumber)} —`, w / 2, h - 96);
 
   return canvasToTexture(canvas, false);
 }

@@ -16,6 +16,9 @@ export const CLOSING_SECONDS = 8.3 + UNDERPAGE_HOLD;
 export const PORTAL_SECONDS = 7.6;
 export const PORTAL_GROW_SECONDS = 2.8;
 export const PORTAL_TUNNEL_START = 4.1;
+export const REPEAT_TEMPO = 2.2;
+export const QUICK_CLOSE_TEMPO = 2.4;
+export const HURRY_TEMPO = 5;
 
 export const ritualMotion = {
   charge: 0,
@@ -39,6 +42,7 @@ export const ritualMotion = {
   attractCenter: [0, 0.7, 0] as [number, number, number],
   swapping: false,
   carouselDrag: 0,
+  tempo: 1,
 };
 
 function resetMotion() {
@@ -58,6 +62,7 @@ function resetMotion() {
 export const QUESTION_MAX_LENGTH = 90;
 
 let pendingQuestion = "";
+let completedRituals = 0;
 let snapshot: RitualSnapshot = { phase: "idle", answer: null };
 const serverSnapshot: RitualSnapshot = { phase: "idle", answer: null };
 const listeners = new Set<() => void>();
@@ -80,6 +85,7 @@ export const ritualStore = {
   begin(question = "") {
     if (snapshot.phase !== "idle" || ritualMotion.swapping || !bookStore.getSnapshot().answers) return false;
     pendingQuestion = question.trim().replace(/\s+/g, " ").slice(0, QUESTION_MAX_LENGTH);
+    ritualMotion.tempo = completedRituals > 0 ? REPEAT_TEMPO : 1;
     emit({ phase: "charging", answer: null });
     return true;
   },
@@ -95,21 +101,31 @@ export const ritualStore = {
   },
   reveal() {
     if (snapshot.phase !== "opening") return;
+    ritualMotion.tempo = 1;
     emit({ phase: "revealed", answer: snapshot.answer });
   },
   close() {
     if (snapshot.phase !== "revealed") return;
+    ritualMotion.tempo = completedRituals > 0 ? QUICK_CLOSE_TEMPO : 1;
     emit({ phase: "closing", answer: snapshot.answer });
   },
   settle() {
     if (snapshot.phase !== "closing") return;
+    completedRituals += 1;
+    ritualMotion.tempo = 1;
     ritualMotion.charge = 0;
     emit({ phase: "idle", answer: null });
   },
   enterPortal() {
     if (snapshot.phase !== "closing" || !ritualMotion.portalReady) return false;
     ritualMotion.portalReady = false;
+    ritualMotion.tempo = 1;
     emit({ phase: "portal", answer: snapshot.answer });
+    return true;
+  },
+  hurry() {
+    if (snapshot.phase !== "charging" && snapshot.phase !== "opening") return false;
+    ritualMotion.tempo = Math.max(ritualMotion.tempo, HURRY_TEMPO);
     return true;
   },
   depart() {
@@ -118,6 +134,7 @@ export const ritualStore = {
   },
   reset() {
     resetMotion();
+    ritualMotion.tempo = 1;
     if (snapshot.phase !== "idle") emit({ phase: "idle", answer: null });
   },
 };

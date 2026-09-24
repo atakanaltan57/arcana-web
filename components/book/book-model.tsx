@@ -337,7 +337,7 @@ export function BookModel({ theme }: BookModelProps) {
   }, [assets, locale]);
 
   const loadAnswer = (answer: PickedAnswer) => {
-    createAnswerTexture(answer.text, answer.page, answer.bookTitle, answer.question)
+    createAnswerTexture(answer.text, answer.page, answer.bookTitle, answer.question, answer.golden)
       .then((texture) => {
         if (lastAnswer.current !== answer) {
           texture.dispose();
@@ -360,7 +360,7 @@ export function BookModel({ theme }: BookModelProps) {
   useFrame((state, delta) => {
     const { phase, answer } = ritualStore.getSnapshot();
     const motion = ritualMotion;
-    motion.phaseTime += delta;
+    motion.phaseTime += delta * motion.tempo;
     const t = motion.phaseTime;
 
     let coverAngle = 0;
@@ -390,7 +390,7 @@ export function BookModel({ theme }: BookModelProps) {
     }
 
     if (phase === "charging") {
-      motion.charge = Math.min(1, motion.charge + delta / CHARGE_SECONDS);
+      motion.charge = Math.min(1, motion.charge + (delta * motion.tempo) / CHARGE_SECONDS);
       motion.attract = motion.charge;
       glow = 0.35 + motion.charge * 0.85 + Math.sin(state.clock.elapsedTime * 14) * 0.06 * motion.charge;
       ignite = motion.charge * 1.15;
@@ -470,7 +470,7 @@ export function BookModel({ theme }: BookModelProps) {
         motion.burnOriginV = 0.05 + Math.random() * 0.12;
         motion.burnId += 1;
         uniforms.uBurnOrigin.value.set(motion.burnOriginU, motion.burnOriginV);
-        playCrackle(BURN_DURATION + 0.3);
+        playCrackle((BURN_DURATION + 0.3) / motion.tempo);
         vibrate([8, 120, 8, 90, 10]);
       }
       motion.burnClock = t;

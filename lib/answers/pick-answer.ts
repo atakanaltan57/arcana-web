@@ -5,10 +5,12 @@ export type PickedAnswer = {
   bookId: string;
   bookTitle: string;
   question: string;
+  golden: boolean;
 };
 
 const HISTORY_PREFIX = "ck-recent-answers:";
 const HISTORY_RATIO = 0.3;
+export const GOLDEN_ODDS = 100;
 
 function randomInt(max: number) {
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
@@ -64,5 +66,6 @@ export function pickAnswer({ locale, bookId, bookTitle, answers, question = "" }
     bookId,
     bookTitle,
     question,
+    golden: randomInt(GOLDEN_ODDS) === 0,
   };
 }

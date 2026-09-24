@@ -103,6 +103,15 @@ export const tr = {
     finaleBody: "Kapı artık senin için hep açık. Sırrı taşıyan, sırrın mührü olur.",
     finaleShare: "Zaferini paylaş",
   },
+  golden: {
+    label: "Altın Sayfa",
+    notice: "Altın sayfa! Yüz sorudan birinde çıkar.",
+    cardBadge: "Altın Sayfa · %1",
+  },
+  daily: {
+    first: "Günün ilk sayfası",
+    streak: (days: number) => `${days} gündür her gün soruyorsun`,
+  },
   errorPage: {
     title: "Kitap bu sefer açılmadı.",
     body: "Bir şeyler ters gitti. Yeniden denersen sayfalar yine hışırdayacak.",

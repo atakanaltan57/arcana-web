@@ -16,6 +16,7 @@ import {
 } from "@/lib/story-recorder";
 import { shareAnswerCard, type ShareKind } from "@/lib/share";
 import { createAnswerCard } from "@/lib/answer-card";
+import { recordDailyPage } from "@/lib/daily";
 import type { PickedAnswer } from "@/lib/answers/pick-answer";
 import { StorySheet } from "@/components/share/story-sheet";
 import { PageActions } from "@/components/share/page-actions";
@@ -118,6 +119,7 @@ export function Experience() {
   const [sharing, setSharing] = useState<ShareKind | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
+  const [highlight, setHighlight] = useState<string | null>(null);
   const [story, setStory] = useState<PreparedStory | null>(null);
   const [paywall, setPaywall] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -160,7 +162,7 @@ export function Experience() {
     }
     if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
     if (ritualStore.begin(question)) {
-      startDrone(CHARGE_SECONDS);
+      startDrone(CHARGE_SECONDS / ritualMotion.tempo);
       vibrate([10, 90, 14, 70, 18, 50, 24, 30, 30]);
       const canvas = stageRef.current?.querySelector("canvas");
       if (canvas) startStoryRecording(canvas, getMessages().books[bookStore.getSnapshot().book.id].title, question.trim());
@@ -168,8 +170,23 @@ export function Experience() {
   }, [ready, story, paywall, locked, question]);
 
   useEffect(() => {
-    if (phase === "revealed" && answer) answerRef.current = answer;
-    if (phase !== "revealed") setNotice(null);
+    if (phase === "revealed" && answer && answerRef.current !== answer) {
+      answerRef.current = answer;
+      const daily = recordDailyPage();
+      const copy = getMessages();
+      if (answer.golden) {
+        setHighlight(copy.golden.notice);
+        vibrate([20, 60, 20, 60, 40]);
+      } else if (daily.firstToday) {
+        setHighlight(daily.streak > 1 ? `${copy.daily.first} · ${copy.daily.streak(daily.streak)}` : copy.daily.first);
+      } else {
+        setHighlight(null);
+      }
+    }
+    if (phase !== "revealed") {
+      setNotice(null);
+      setHighlight(null);
+    }
     const wasClosing = previousPhase.current === "closing";
     previousPhase.current = phase;
     if (!wasClosing || phase !== "idle") return;
@@ -195,7 +212,7 @@ export function Experience() {
     setSharing("image");
     setNotice(null);
     try {
-      const card = await createAnswerCard({ answer: current.text, question: current.question, bookTitle: current.bookTitle });
+      const card = await createAnswerCard({ answer: current.text, question: current.question, bookTitle: current.bookTitle, golden: current.golden });
       const outcome = await shareAnswerCard(card, current.text, current.question);
       if (outcome === "downloaded") setNotice(getMessages().share.imageSaved);
       if (outcome === "in-app") setNotice(getMessages().share.inApp);
@@ -298,6 +315,10 @@ export function Experience() {
       return;
     }
     if (current.moved) return;
+    if (phase === "charging" || phase === "opening") {
+      ritualStore.hurry();
+      return;
+    }
     if (phase === "idle") {
       const edge = event.clientX / window.innerWidth;
       if (edge < 0.16) {
@@ -425,6 +446,11 @@ export function Experience() {
 
           {phase === "revealed" && (
             <motion.div key="revealed" {...fade} transition={{ duration: 1.1, delay: 0.4, ease: "easeOut" }} className="flex flex-col items-center gap-3">
+              {highlight && !notice && (
+                <p className="font-serif text-lg italic text-gold-bright [text-shadow:0_2px_14px_rgba(0,0,0,0.9)]" role="status">
+                  {highlight}
+                </p>
+              )}
               {notice && (
                 <p className="text-hint max-w-sm text-balance [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]" role="status">
                   {notice}

@@ -105,6 +105,15 @@ export const en: Messages = {
     finaleBody: "The gate is always open for you now. Whoever carries the secret becomes its seal.",
     finaleShare: "Share your victory",
   },
+  golden: {
+    label: "Golden Page",
+    notice: "A golden page! One in a hundred questions gets one.",
+    cardBadge: "Golden Page · 1%",
+  },
+  daily: {
+    first: "Today's first page",
+    streak: (days: number) => `You've asked ${days} days in a row`,
+  },
   errorPage: {
     title: "The book did not open this time.",
     body: "Something went wrong. Try again and the pages will rustle once more.",
