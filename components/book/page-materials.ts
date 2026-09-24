@@ -73,6 +73,14 @@ type InkPageOptions = {
   back?: THREE.Texture;
 };
 
+const burnChunk = /* glsl */ `
+  float inkBurnDistance(vec2 uv) {
+    vec2 delta = vec2(uv.x - uBurnOrigin.x, (uv.y - uBurnOrigin.y) * ${BURN_ASPECT.toFixed(2)});
+    float key = length(delta) * 0.75 + inkFbm(uv * vec2(6.0, 8.4) + 3.1) * 0.45;
+    return key - uBurn * ${BURN_REACH.toFixed(2)};
+  }
+`;
+
 const noiseChunk = /* glsl */ `
   float inkHash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -123,7 +131,16 @@ export function createInkPageMaterial(
   });
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
-    shader.fragmentShader = `uniform sampler2D uText;\nuniform float uProgress;\nuniform float uGutterSide;\nuniform float uBurn;\nuniform vec2 uBurnOrigin;\nuniform float uTime;\nuniform sampler2D uBack;\nuniform float uHasBack;\n${noiseChunk}\n${shader.fragmentShader}`.replace(
+    shader.vertexShader = `uniform float uBurn;\nuniform vec2 uBurnOrigin;\n${noiseChunk}\n${burnChunk}\n${shader.vertexShader}`.replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+      if (uBurn > 0.0) {
+        float curlDist = inkBurnDistance(uv);
+        float curl = smoothstep(0.1, -0.04, curlDist) * (0.045 + 0.03 * inkNoise(uv * 9.0));
+        transformed.y += curl;
+      }`,
+    );
+    shader.fragmentShader = `uniform sampler2D uText;\nuniform float uProgress;\nuniform float uGutterSide;\nuniform float uBurn;\nuniform vec2 uBurnOrigin;\nuniform float uTime;\nuniform sampler2D uBack;\nuniform float uHasBack;\n${noiseChunk}\n${burnChunk}\n${shader.fragmentShader}`.replace(
       "#include <map_fragment>",
       `#include <map_fragment>
       vec2 pageUv = vMapUv;
@@ -153,33 +170,44 @@ export function createInkPageMaterial(
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.66, 0.46, 0.17), goldAmount);
 
       float burnGlow = 0.0;
+      vec3 burnColor = vec3(0.0);
       if (uBurn > 0.0) {
-        vec2 burnDelta = vec2(pageUv.x - uBurnOrigin.x, (pageUv.y - uBurnOrigin.y) * ${BURN_ASPECT.toFixed(2)});
-        float burnKey = length(burnDelta) * 0.75 + inkFbm(pageUv * vec2(6.0, 8.4) + 3.1) * 0.45;
-        float burnFront = uBurn * ${BURN_REACH.toFixed(2)};
-        float burnDist = burnKey - burnFront;
-        float flake = inkNoise(pageUv * 150.0);
-        float fine = inkNoise(pageUv * 420.0 + uTime * 0.5);
+        float burnDist = inkBurnDistance(pageUv);
+        float edgeWarp = inkFbm(pageUv * 28.0 + 7.3);
+        float crawl = inkFbm(pageUv * 55.0 + vec2(uTime * 0.35, -uTime * 0.2));
+        float mottle = inkFbm(pageUv * 20.0 + 1.7);
 
-        if (burnDist < -0.07 - flake * 0.09) discard;
+        if (burnDist < -0.04 - edgeWarp * 0.025) discard;
 
-        float scorch = 1.0 - smoothstep(0.0, 0.16, burnDist);
-        vec3 scorched = mix(vec3(0.42, 0.24, 0.1), vec3(0.08, 0.04, 0.02), 1.0 - smoothstep(0.0, 0.08, burnDist));
-        diffuseColor.rgb = mix(diffuseColor.rgb, scorched, scorch * 0.9);
+        float heat = 1.0 - smoothstep(0.0, 0.22 + mottle * 0.06, burnDist);
+        vec3 toasted = mix(diffuseColor.rgb, vec3(0.5, 0.31, 0.13) * (0.8 + mottle * 0.4), 0.85);
+        diffuseColor.rgb = mix(diffuseColor.rgb, toasted, heat * heat);
 
-        float ash = 1.0 - smoothstep(-0.04, -0.004, burnDist);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.1, 0.095, 0.09) * (0.55 + flake * 0.9), ash);
+        float charWidth = 0.028 + edgeWarp * 0.022;
+        float charred = 1.0 - smoothstep(-0.01, charWidth, burnDist);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.045, 0.028, 0.018) * (0.7 + mottle * 0.6), charred);
 
-        float flicker = 0.75 + 0.25 * sin(uTime * 23.0 + pageUv.x * 40.0) * sin(uTime * 17.0 + pageUv.y * 31.0);
-        float rim = (1.0 - smoothstep(0.0, 0.025, burnDist)) * smoothstep(-0.05, -0.008, burnDist);
-        float embers = step(0.74, fine) * smoothstep(-0.1, -0.045, burnDist) * (1.0 - smoothstep(-0.025, -0.004, burnDist));
-        burnGlow = (rim * (0.8 + fine * 0.6) + embers * 0.6) * flicker;
+        float ashBand = smoothstep(-0.016, -0.026, burnDist);
+        float veins = smoothstep(0.55, 0.62, inkFbm(pageUv * 70.0 + 5.1));
+        vec3 ashColor = mix(vec3(0.34, 0.32, 0.3), vec3(0.12, 0.11, 0.1), veins) * (0.75 + edgeWarp * 0.5);
+        diffuseColor.rgb = mix(diffuseColor.rgb, ashColor, ashBand);
+
+        float pulse = 0.85 + 0.15 * inkNoise(pageUv * 12.0 + vec2(uTime * 1.7, uTime * 1.3));
+        float lineMask = smoothstep(-0.017, -0.009, burnDist) * (1.0 - smoothstep(-0.003, 0.002, burnDist));
+        float lineCrawl = smoothstep(0.35, 0.75, crawl);
+        float core = smoothstep(0.62, 0.8, crawl);
+        float smoulder = smoothstep(0.6, 0.72, inkFbm(pageUv * 90.0 + vec2(0.0, uTime * 0.25)))
+          * smoothstep(-0.03, -0.012, burnDist) * (1.0 - smoothstep(0.0, charWidth, burnDist));
+
+        float lineGlow = lineMask * (0.25 + 0.75 * lineCrawl) * pulse;
+        burnGlow = lineGlow * 0.8 + smoulder * 0.3;
+        burnColor = mix(vec3(1.25, 0.26, 0.03), vec3(1.9, 0.75, 0.12), core * lineMask);
       }`,
     )
     .replace(
       "#include <emissivemap_fragment>",
       `#include <emissivemap_fragment>
-      totalEmissiveRadiance += vec3(2.6, 0.72, 0.12) * burnGlow;`,
+      totalEmissiveRadiance += burnColor * burnGlow;`,
     );
   };
   material.customProgramCacheKey = () => "ink-page";

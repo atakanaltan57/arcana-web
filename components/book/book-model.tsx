@@ -277,7 +277,7 @@ export function BookModel({ theme }: BookModelProps) {
 
     const coverGeometry = createCoverGeometry();
     const pagesGeometry = createPagesGeometry();
-    const rightPageGeometry = new THREE.PlaneGeometry(width, depth, 40, 1).rotateX(-Math.PI / 2);
+    const rightPageGeometry = new THREE.PlaneGeometry(width, depth, 40, 48).rotateX(-Math.PI / 2);
     const rightPositions = rightPageGeometry.attributes.position;
     for (let i = 0; i < rightPositions.count; i++) {
       const u = (rightPositions.getX(i) + width / 2) / width;
@@ -542,7 +542,8 @@ export function BookModel({ theme }: BookModelProps) {
 
     motion.open = open;
     if (fireLight.current) {
-      const flicker = 0.75 + 0.25 * Math.sin(state.clock.elapsedTime * 19) * Math.sin(state.clock.elapsedTime * 7.3);
+      const time = state.clock.elapsedTime;
+      const flicker = 0.72 + 0.16 * Math.sin(time * 11.3 + Math.sin(time * 2.7) * 2) + 0.12 * Math.sin(time * 23.9 + Math.sin(time * 5.1));
       fireLight.current.intensity = fire * 6 * flicker;
     }
     cover.uIgnite.value = ignite;
@@ -621,7 +622,7 @@ export function BookModel({ theme }: BookModelProps) {
       <pointLight
         ref={fireLight}
         position={[pagesCenterX, axisY + 0.7, 0.4]}
-        color="#ff7a2e"
+        color="#ff6a1a"
         intensity={0}
         decay={2}
       />
