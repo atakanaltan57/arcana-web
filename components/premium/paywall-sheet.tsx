@@ -100,7 +100,7 @@ export function PaywallSheet({ book, onClose }: PaywallSheetProps) {
                 }`}
               >
                 {option.note && (
-                  <span className="absolute -top-2.5 rounded-full bg-gold-bright px-2.5 py-0.5 text-micro font-semibold text-[#2a1806] uppercase">
+                  <span className="absolute -top-3 whitespace-nowrap rounded-full bg-gold-bright px-3 py-0.5 text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-[#2a1806]">
                     {option.note}
                   </span>
                 )}
