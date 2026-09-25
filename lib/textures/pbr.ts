@@ -3,6 +3,9 @@
 import { useEffect, useMemo } from "react";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
+import { isCompactDevice } from "@/lib/device";
+
+const TEXTURE_SIZE = typeof window !== "undefined" && isCompactDevice() ? "512" : "1k";
 
 export type PbrSet =
   | "medieval_wood"
@@ -20,9 +23,9 @@ export type PbrTextures = {
 
 function paths(set: PbrSet) {
   return {
-    map: `/textures/${set}_diff_1k.jpg`,
-    normalMap: `/textures/${set}_nor_gl_1k.jpg`,
-    roughnessMap: `/textures/${set}_rough_1k.jpg`,
+    map: `/textures/${set}_diff_${TEXTURE_SIZE}.jpg`,
+    normalMap: `/textures/${set}_nor_gl_${TEXTURE_SIZE}.jpg`,
+    roughnessMap: `/textures/${set}_rough_${TEXTURE_SIZE}.jpg`,
   };
 }
 

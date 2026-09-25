@@ -100,7 +100,7 @@ export function GemGlint({ position }: StarburstProps) {
     const closed = phase === "idle" || phase === "charging";
     const t = clock.elapsedTime;
     const pulse = Math.pow(Math.max(0, Math.sin(t * 0.85)), 40) + Math.pow(Math.max(0, Math.sin(t * 1.9 + 1.7)), 90) * 0.5;
-    const flash = closed ? 0.12 + pulse * 0.75 + ritualMotion.charge * 0.5 + ritualMotion.hover * 0.1 : 0;
+    const flash = closed ? pulse * 0.4 + ritualMotion.charge * 0.45 + ritualMotion.hover * 0.04 : 0;
     material.uniforms.uFlash.value = flash;
     material.uniforms.uSpin.value = 0.2 + Math.sin(t * 0.3) * 0.15;
     if (mesh.current) mesh.current.visible = flash > 0.001;

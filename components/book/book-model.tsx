@@ -549,7 +549,7 @@ export function BookModel({ theme }: BookModelProps) {
     }
     cover.uIgnite.value = ignite;
     cover.uGem.value =
-      1.1 + 0.9 * Math.pow(0.5 + 0.5 * Math.sin(state.clock.elapsedTime * 1.3), 3) + motion.charge * 2.5 + motion.hover * 0.4;
+      0.32 + 0.22 * Math.pow(0.5 + 0.5 * Math.sin(state.clock.elapsedTime * 1.1), 3) + motion.charge * 1.6 + motion.hover * 0.15;
     cover.uSparkle.value = THREE.MathUtils.damp(cover.uSparkle.value, sparkle, 6, delta);
     themed.coverTop.emissiveIntensity = THREE.MathUtils.damp(themed.coverTop.emissiveIntensity, glow, 10, delta);
 

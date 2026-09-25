@@ -1,7 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { LoadProgressBridge } from "@/components/brand/load-progress-bridge";
+import { warmScene } from "@/lib/three-warmup";
+import { initialPixelRatio, isCompactDevice, isLowEndDevice } from "@/lib/device";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -146,9 +148,24 @@ function CryptDust() {
 }
 
 function ReadySignal({ onReady }: { onReady: () => void }) {
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
+  const onReadyRef = useRef(onReady);
   useEffect(() => {
-    onReady();
+    onReadyRef.current = onReady;
   }, [onReady]);
+  useEffect(() => {
+    let cancelled = false;
+    warmScene(gl, scene, camera, () => cancelled)
+      .catch((error: unknown) => console.error("Gate warm-up failed", error))
+      .finally(() => {
+        if (!cancelled) onReadyRef.current();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gl, scene, camera]);
   return null;
 }
 
@@ -170,8 +187,7 @@ function Seals({ broken, breaking }: Pick<GateSceneProps, "broken" | "breaking">
 }
 
 export default function GateScene({ broken, breaking, openAt, dimAt, onReady }: GateSceneProps) {
-  const [dpr, setDpr] = useState(1.5);
-  const [effects, setEffects] = useState(true);
+  const [dpr, setDpr] = useState(initialPixelRatio);
   const torchY = GATE.springY - 1.5;
 
   return (
@@ -181,13 +197,9 @@ export default function GateScene({ broken, breaking, openAt, dimAt, onReady }: 
       camera={{ fov: 45, near: 0.1, far: 80, position: [0, 3.2, 14] }}
     >
       <PerformanceMonitor
-        onIncline={() => setDpr(Math.min(2, window.devicePixelRatio))}
         onDecline={() => setDpr(1)}
         flipflops={3}
-        onFallback={() => {
-          setDpr(1);
-          setEffects(false);
-        }}
+        onFallback={() => setDpr(1)}
       />
       <color attach="background" args={["#040406"]} />
       <fog attach="fog" args={["#07070a", 18, 42]} />
@@ -213,14 +225,12 @@ export default function GateScene({ broken, breaking, openAt, dimAt, onReady }: 
       </Suspense>
       <CryptDust />
 
-      {effects && (
-        <EffectComposer multisampling={4}>
-          <Bloom mipmapBlur intensity={0.9} luminanceThreshold={1} luminanceSmoothing={0.25} />
-          <ToneMapping mode={ToneMappingMode.AGX} />
-          <Noise opacity={0.03} />
-          <Vignette offset={0.3} darkness={0.62} />
-        </EffectComposer>
-      )}
+      <EffectComposer multisampling={isLowEndDevice() ? 0 : isCompactDevice() ? 2 : 4}>
+        <Bloom mipmapBlur intensity={0.9} luminanceThreshold={1} luminanceSmoothing={0.25} />
+        <ToneMapping mode={ToneMappingMode.AGX} />
+        <Noise opacity={0.03} />
+        <Vignette offset={0.3} darkness={0.62} />
+      </EffectComposer>
       <LoadProgressBridge />
     </Canvas>
   );

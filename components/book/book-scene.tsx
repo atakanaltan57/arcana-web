@@ -3,6 +3,8 @@
 import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { LoadProgressBridge } from "@/components/brand/load-progress-bridge";
 import { HeatHazeEffect, HeatTracker } from "./heat-haze";
+import { warmScene } from "@/lib/three-warmup";
+import { initialPixelRatio, isCompactDevice, isLowEndDevice } from "@/lib/device";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -122,8 +124,16 @@ function CameraRig() {
   return null;
 }
 
-function BookCarousel({ bookId }: { bookId: string }) {
+function BookCarousel({ bookId, onWarm }: { bookId: string; onWarm: () => void }) {
   const size = useThree((state) => state.size);
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
+  const warmed = useRef(false);
+  const onWarmRef = useRef(onWarm);
+  useEffect(() => {
+    onWarmRef.current = onWarm;
+  }, [onWarm]);
   const groups = useRef<(THREE.Group | null)[]>([]);
   const active = useRef<THREE.Group>(null);
   const index = Math.max(0, BOOKS.findIndex((book) => book.id === bookId));
@@ -149,6 +159,23 @@ function BookCarousel({ bookId }: { bookId: string }) {
     [],
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      warmScene(gl, scene, camera, () => cancelled)
+        .catch((error: unknown) => console.error("Book warm-up failed", error))
+        .finally(() => {
+          if (cancelled) return;
+          warmed.current = true;
+          onWarmRef.current();
+        });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [gl, scene, camera]);
+
   const place = (node: THREE.Group, offset: number, spreadFactor: number) => {
     const distance = Math.min(Math.abs(offset), 1.6);
     node.position.set(offset * spacing * spreadFactor, 0, -distance * 0.9);
@@ -168,7 +195,7 @@ function BookCarousel({ bookId }: { bookId: string }) {
       const node = groups.current[i];
       if (!node) return;
       const offset = i - scroll.current;
-      node.visible = i !== index && Math.abs(offset * spread.current) < 2.6;
+      node.visible = i !== index && (!warmed.current || Math.abs(offset * spread.current) < 2.6);
       if (node.visible) place(node, offset, spread.current);
     });
     if (active.current) place(active.current, index - scroll.current, 1);
@@ -325,10 +352,18 @@ class TableBoundary extends Component<{ children: ReactNode }, TableBoundaryStat
 
 export default function BookScene({ bookId, onReady, onContextLost }: BookSceneProps) {
   const theme = findBook(bookId).theme;
-  const [dpr, setDpr] = useState(1.5);
-  const [effects, setEffects] = useState(true);
+  const [dpr, setDpr] = useState(initialPixelRatio);
   const lens = useMemo(() => new BlackHoleLensEffect(), []);
   const heat = useMemo(() => new HeatHazeEffect(), []);
+  const lowEnd = useMemo(() => isLowEndDevice(), []);
+  const compact = useMemo(() => isCompactDevice(), []);
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
   useEffect(
     () => () => {
       lens.dispose();
@@ -345,20 +380,18 @@ export default function BookScene({ bookId, onReady, onContextLost }: BookSceneP
       onCreated={({ gl }) => {
         gl.domElement.addEventListener("webglcontextlost", (event) => {
           event.preventDefault();
-          console.error("WebGL context lost; rebuilding the scene");
-          onContextLost();
+          window.setTimeout(() => {
+            if (!mounted.current) return;
+            console.error("WebGL context lost; rebuilding the scene");
+            onContextLost();
+          }, 0);
         });
-        onReady();
       }}
     >
       <PerformanceMonitor
-        onIncline={() => setDpr(Math.min(2, window.devicePixelRatio))}
         onDecline={() => setDpr(1)}
         flipflops={3}
-        onFallback={() => {
-          setDpr(1);
-          setEffects(false);
-        }}
+        onFallback={() => setDpr(1)}
       />
       <color attach="background" args={["#050608"]} />
       <fog attach="fog" args={["#050608", 16, 34]} />
@@ -382,24 +415,22 @@ export default function BookScene({ bookId, onReady, onContextLost }: BookSceneP
           <Table />
         </Suspense>
       </TableBoundary>
-      <BookCarousel bookId={bookId} />
+      <BookCarousel bookId={bookId} onWarm={onReady} />
       <ContactShadows position={[0, 0.002, 0]} opacity={0.9} scale={14} blur={2.2} far={1.6} resolution={1024} color="#000000" />
       <DustParticles />
       <LensTracker effect={lens} center={DROP_CAP_WORLD} horizonRadius={0.11} />
-      <HeatTracker effect={heat} />
+      {!lowEnd && <HeatTracker effect={heat} />}
       <WormholeTunnel />
       <LightShaft />
 
-      {effects && (
-        <EffectComposer multisampling={4}>
-          <Bloom mipmapBlur intensity={0.75} luminanceThreshold={1} luminanceSmoothing={0.25} />
-          <primitive object={heat} dispose={null} />
-          <primitive object={lens} dispose={null} />
-          <ToneMapping mode={ToneMappingMode.AGX} />
-          <Noise opacity={0.025} />
-          <Vignette offset={0.3} darkness={0.8} />
-        </EffectComposer>
-      )}
+      <EffectComposer multisampling={lowEnd ? 0 : compact ? 2 : 4}>
+        <Bloom mipmapBlur intensity={0.75} luminanceThreshold={1} luminanceSmoothing={0.25} />
+        {!lowEnd && <primitive object={heat} dispose={null} />}
+        <primitive object={lens} dispose={null} />
+        <ToneMapping mode={ToneMappingMode.AGX} />
+        <Noise opacity={0.025} />
+        <Vignette offset={0.3} darkness={0.8} />
+      </EffectComposer>
       <LoadProgressBridge />
     </Canvas>
   );

@@ -16,7 +16,7 @@ export function enhanceCoverMaterial(material: THREE.MeshStandardMaterial, candl
     uTime: { value: 0 },
     uGlint: { value: new THREE.Vector3(1.5, 3.4, 3.2) },
     uCandle: { value: new THREE.Vector3(...candle) },
-    uGem: { value: 1 },
+    uGem: { value: 0.3 },
   };
 
   material.onBeforeCompile = (shader) => {
