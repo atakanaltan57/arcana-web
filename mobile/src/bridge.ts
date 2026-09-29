@@ -2,7 +2,6 @@ import { Share } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
-import { Asset, requestPermissionsAsync } from "expo-media-library";
 
 type ShareFilePayload = { base64: string; mimeType: string; fileName: string; text: string };
 type ShareTextPayload = { text: string; url: string };
@@ -58,7 +57,16 @@ async function shareText({ text, url }: ShareTextPayload) {
   return result.action === Share.dismissedAction ? "cancelled" : "shared";
 }
 
+async function loadMediaLibrary() {
+  try {
+    return await import("expo-media-library");
+  } catch (error) {
+    throw new Error(`Saving to the photo library is not available in this build: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 async function saveFile({ base64, fileName }: SaveFilePayload) {
+  const { Asset, requestPermissionsAsync } = await loadMediaLibrary();
   const permission = await requestPermissionsAsync(true);
   if (!permission.granted) return "denied";
   const file = writeTemp(base64, fileName);
