@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Arcana",
+    "slug": "arcana",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#06080f",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.atakanaltan.arcana",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.atakanaltan.arcana",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b0c10",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#06080f"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": false,
+          "savePhotosPermission": "Arcana, hikâye videonu ve cevap görselini galerine kaydetmek için izin istiyor."
+        }
+      ]
+    ]
+  }
+}

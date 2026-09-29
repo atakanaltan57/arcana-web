@@ -3,6 +3,7 @@ import { answerPath } from "@/lib/answer-link";
 import type { PickedAnswer } from "@/lib/answers/pick-answer";
 import { getMessages } from "@/lib/i18n/locale-store";
 import type { StoryVideo } from "@/lib/story-recorder";
+import { blobToBase64, callNative, isNativeApp } from "@/lib/native-bridge";
 
 export type ShareKind = "image" | "link" | "video";
 
@@ -45,7 +46,14 @@ function downloadBlob(blob: Blob, fileName: string) {
 }
 
 export function downloadStory(video: StoryVideo) {
-  downloadBlob(video.blob, `${getMessages().share.fileName}.${video.extension}`);
+  const fileName = `${getMessages().share.fileName}.${video.extension}`;
+  if (!isNativeApp()) {
+    downloadBlob(video.blob, fileName);
+    return;
+  }
+  blobToBase64(video.blob)
+    .then((base64) => callNative("save-file", { base64, mimeType: video.mimeType, fileName }))
+    .catch((error: unknown) => console.error("Story could not be saved to the device", error));
 }
 
 function isAbort(error: unknown) {
@@ -83,6 +91,10 @@ export async function copyText(text: string) {
 }
 
 async function shareFile(file: File, text: string): Promise<ShareOutcome> {
+  if (isNativeApp()) {
+    const base64 = await blobToBase64(file);
+    return callNative("share-file", { base64, mimeType: file.type, fileName: file.name, text });
+  }
   if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], text });
@@ -99,6 +111,7 @@ async function shareFile(file: File, text: string): Promise<ShareOutcome> {
 }
 
 async function shareTextOnly(text: string, url: string): Promise<ShareOutcome> {
+  if (isNativeApp()) return callNative("share-text", { text, url });
   if (typeof navigator.share === "function") {
     try {
       await navigator.share(url ? { text, url } : { text });
