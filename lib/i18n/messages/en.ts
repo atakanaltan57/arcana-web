@@ -40,6 +40,7 @@ export const en: Messages = {
     ask: { title: "Book of Love", subtitle: "Questions of the heart" },
     yol: { title: "Book of Paths", subtitle: "Work and decisions" },
     kader: { title: "Book of Fate", subtitle: "Destiny and signs" },
+    gizem: { title: "Book of Mystery", subtitle: "Whispers of the cards" },
     ay: { title: "Book of the Moon", subtitle: "Wisdom of the night" },
     golge: { title: "Book of Shadows", subtitle: "The dark within" },
   },

@@ -18,7 +18,7 @@ import {
   type StoryVideo,
 } from "@/lib/story-recorder";
 import { shareAnswerCard, shareAnswerLink, type ShareKind } from "@/lib/share";
-import { createAnswerCard } from "@/lib/answer-card";
+import { createAnswerCardFor } from "@/lib/answer-card";
 import { recordDailyPage } from "@/lib/daily";
 import type { PickedAnswer } from "@/lib/answers/pick-answer";
 import { StorySheet } from "@/components/share/story-sheet";
@@ -197,7 +197,7 @@ export function Experience() {
     if (phase === "revealed" && answer && answerRef.current !== answer) {
       answerRef.current = answer;
       pauseStoryRecording();
-      const card = createAnswerCard({ answer: answer.text, question: answer.question, bookTitle: answer.bookTitle, golden: answer.golden });
+      const card = createAnswerCardFor(answer);
       card.catch((error: unknown) => console.error("Answer card could not be prepared", error));
       cardRef.current = { answer, card };
       const daily = recordDailyPage();
@@ -244,7 +244,7 @@ export function Experience() {
     setNotice(null);
     try {
       const prepared = cardRef.current?.answer === current ? cardRef.current.card : null;
-      const card = await (prepared ?? createAnswerCard({ answer: current.text, question: current.question, bookTitle: current.bookTitle, golden: current.golden }));
+      const card = await (prepared ?? createAnswerCardFor(current));
       const outcome = await shareAnswerCard(card, current);
       if (outcome === "downloaded") setNotice(getMessages().share.imageSaved);
       if (outcome === "in-app") setNotice(getMessages().share.inApp);

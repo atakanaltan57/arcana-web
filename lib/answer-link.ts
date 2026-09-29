@@ -2,6 +2,7 @@ import { BOOKS } from "@/lib/books";
 import { en } from "@/lib/i18n/messages/en";
 import { tr, type Messages } from "@/lib/i18n/messages/tr";
 import type { Locale } from "@/lib/i18n/locale-store";
+import { tarotCardFor, tarotLabel } from "@/lib/tarot";
 
 export const SHARED_QUESTION_MAX = 90;
 
@@ -14,6 +15,7 @@ export type SharedAnswer = {
   text: string;
   question: string;
   bookTitle: string;
+  card: { image: string; label: string } | null;
   messages: Messages;
 };
 
@@ -65,6 +67,7 @@ export async function resolveSharedAnswer(locale: string, bookId: string, rawInd
   const text = answers[index];
   if (!text) return null;
   const messages = MESSAGES[locale];
+  const tarot = tarotCardFor(bookId, index);
   return {
     locale,
     bookId,
@@ -72,6 +75,7 @@ export async function resolveSharedAnswer(locale: string, bookId: string, rawInd
     text,
     question: cleanQuestion(rawQuestion),
     bookTitle: messages.books[bookId].title,
+    card: tarot ? { image: tarot.shareImage, label: tarotLabel(tarot, locale) } : null,
     messages,
   };
 }

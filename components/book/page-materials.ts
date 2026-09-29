@@ -66,6 +66,9 @@ export type InkPageUniforms = {
   uTime: { value: number };
   uBack: { value: THREE.Texture };
   uHasBack: { value: number };
+  uImage: { value: THREE.Texture };
+  uImageRect: { value: THREE.Vector4 };
+  uHasImage: { value: number };
 };
 
 type InkPageOptions = {
@@ -122,6 +125,9 @@ export function createInkPageMaterial(
     uTime: { value: 0 },
     uBack: { value: options.back ?? text },
     uHasBack: { value: options.back ? 1 : 0 },
+    uImage: { value: text },
+    uImageRect: { value: new THREE.Vector4(0, 0, 1, 1) },
+    uHasImage: { value: 0 },
   };
   const material = new THREE.MeshStandardMaterial({
     map: paper,
@@ -140,7 +146,7 @@ export function createInkPageMaterial(
         transformed.y += curl;
       }`,
     );
-    shader.fragmentShader = `uniform sampler2D uText;\nuniform float uProgress;\nuniform float uGutterSide;\nuniform float uBurn;\nuniform vec2 uBurnOrigin;\nuniform float uTime;\nuniform sampler2D uBack;\nuniform float uHasBack;\n${noiseChunk}\n${burnChunk}\n${shader.fragmentShader}`.replace(
+    shader.fragmentShader = `uniform sampler2D uText;\nuniform float uProgress;\nuniform float uGutterSide;\nuniform float uBurn;\nuniform vec2 uBurnOrigin;\nuniform float uTime;\nuniform sampler2D uBack;\nuniform float uHasBack;\nuniform sampler2D uImage;\nuniform vec4 uImageRect;\nuniform float uHasImage;\n${noiseChunk}\n${burnChunk}\n${shader.fragmentShader}`.replace(
       "#include <map_fragment>",
       `#include <map_fragment>
       vec2 pageUv = vMapUv;
@@ -168,6 +174,15 @@ export function createInkPageMaterial(
       diffuseColor.rgb = mix(diffuseColor.rgb, rubricColor, rubricAmount);
       float goldAmount = clamp(glyph.b * shown * (0.8 + 0.2 * grain), 0.0, 0.95);
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.66, 0.46, 0.17), goldAmount);
+
+      if (uHasImage > 0.5) {
+        vec2 artUv = (pageUv - uImageRect.xy) / (uImageRect.zw - uImageRect.xy);
+        if (artUv.x >= 0.0 && artUv.x <= 1.0 && artUv.y >= 0.0 && artUv.y <= 1.0) {
+          vec3 art = texture2D(uImage, artUv).rgb;
+          vec3 printed = art * diffuseColor.rgb * 1.12 * vec3(1.0, 0.97, 0.9);
+          diffuseColor.rgb = mix(diffuseColor.rgb, printed, shown * (0.9 + 0.1 * grain));
+        }
+      }
 
       float burnGlow = 0.0;
       vec3 burnColor = vec3(0.0);

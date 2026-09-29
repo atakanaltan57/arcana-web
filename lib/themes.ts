@@ -53,6 +53,17 @@ export const fateTheme: BookTheme = {
   candle: "#ffc98a",
 };
 
+export const mysteryTheme: BookTheme = {
+  id: "gizem",
+  title: "Gizem Kitabı",
+  cover: "#3a1838",
+  coverShade: "#140714",
+  gold: "#c9a45e",
+  goldDeep: "#654a24",
+  goldLight: "#ecd092",
+  candle: "#ffb27a",
+};
+
 export const moonTheme: BookTheme = {
   id: "ay",
   title: "Ay Kitabı",

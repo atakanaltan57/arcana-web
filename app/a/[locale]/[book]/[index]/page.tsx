@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArcanaSeal } from "@/components/brand/arcana-seal";
@@ -61,7 +62,21 @@ export default async function SharedAnswerPage(props: AnswerPageProps) {
         {shared.question && (
           <p className="mt-5 text-balance font-serif text-2xl italic text-[#7a1f16]">“{shared.question}”</p>
         )}
-        <span className="mx-auto mt-6 block h-px w-32 bg-gradient-to-r from-transparent via-[#8a5a24] to-transparent" aria-hidden />
+        {shared.card ? (
+          <figure className="mx-auto mt-6 flex w-40 flex-col items-center gap-3">
+            <Image
+              src={shared.card.image}
+              alt={shared.card.label}
+              width={512}
+              height={882}
+              sizes="160px"
+              className="h-auto w-full rounded-sm border-4 border-[#f6ecd2] shadow-[0_10px_30px_rgba(60,30,10,0.45)] sepia-[0.15]"
+            />
+            <figcaption className="font-serif text-sm font-semibold tracking-[0.2em] text-[#7a1f16]">{shared.card.label}</figcaption>
+          </figure>
+        ) : (
+          <span className="mx-auto mt-6 block h-px w-32 bg-gradient-to-r from-transparent via-[#8a5a24] to-transparent" aria-hidden />
+        )}
         <h1 className="mt-6 text-balance font-serif text-4xl italic leading-tight sm:text-5xl">{shared.text}</h1>
         <p className="mt-6 text-sm text-[#6a4a24]">{shared.question ? copy.intro(BRAND_NAME) : copy.introNoQuestion(BRAND_NAME)}</p>
       </article>

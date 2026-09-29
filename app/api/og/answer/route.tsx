@@ -11,6 +11,48 @@ export async function GET(request: Request) {
   if (!shared) return new Response("Not found", { status: 404 });
 
   const answerSize = shared.text.length > 48 ? 54 : 66;
+  const headers = { "Cache-Control": "public, max-age=3600, s-maxage=86400" };
+
+  if (shared.card) {
+    const cardSrc = new URL(shared.card.image, request.url).toString();
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 64,
+            padding: "0 80px",
+            background: "radial-gradient(ellipse at 40% 45%, #3a1838 0%, #14080f 55%, #060505 100%)",
+            color: "#efe3c8",
+          }}
+        >
+          <img
+            src={cardSrc}
+            width={300}
+            height={517}
+            alt=""
+            style={{ border: "6px solid #f3e6c6", boxShadow: "0 20px 50px rgba(0,0,0,0.7)" }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <BrandSymbolImage size={52} />
+              <div style={{ fontSize: 26, letterSpacing: 10, color: "#ecd08a" }}>{BRAND_NAME_UPPER}</div>
+            </div>
+            <div style={{ fontSize: 24, color: "rgba(239,227,200,0.75)" }}>{shared.bookTitle}</div>
+            {shared.question ? (
+              <div style={{ fontSize: 30, fontStyle: "italic", color: "rgba(239,227,200,0.9)" }}>{`“${shared.question}”`}</div>
+            ) : null}
+            <div style={{ fontSize: 30, letterSpacing: 6, color: "#ecd08a" }}>{shared.card.label}</div>
+            <div style={{ fontSize: shared.text.length > 60 ? 42 : 50, color: "#f4e2b4", lineHeight: 1.2 }}>{shared.text}</div>
+          </div>
+        </div>
+      ),
+      { ...SIZE, headers },
+    );
+  }
 
   return new ImageResponse(
     (
@@ -41,9 +83,6 @@ export async function GET(request: Request) {
         <div style={{ fontSize: answerSize, color: "#f4e2b4", lineHeight: 1.2, maxWidth: 1020 }}>{shared.text}</div>
       </div>
     ),
-    {
-      ...SIZE,
-      headers: { "Cache-Control": "public, max-age=3600, s-maxage=86400" },
-    },
+    { ...SIZE, headers },
   );
 }

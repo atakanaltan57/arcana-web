@@ -3,6 +3,7 @@ import {
   fateTheme,
   loveTheme,
   moonTheme,
+  mysteryTheme,
   pathTheme,
   shadowTheme,
   type BookTheme,
@@ -44,6 +45,10 @@ export const BOOKS: Book[] = [
   book("kader", fateTheme, false, {
     tr: () => import("@/lib/answers/kader.json"),
     en: () => import("@/lib/answers/en/kader.json"),
+  }),
+  book("gizem", mysteryTheme, false, {
+    tr: () => import("@/lib/answers/gizem.json"),
+    en: () => import("@/lib/answers/en/gizem.json"),
   }),
   book("ay", moonTheme, true, {
     tr: () => import("@/lib/answers/ay.json"),

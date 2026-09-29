@@ -38,6 +38,7 @@ export const tr = {
     ask: { title: "Aşk Kitabı", subtitle: "Kalbin soruları" },
     yol: { title: "Yol Kitabı", subtitle: "İş ve kararlar" },
     kader: { title: "Kader Kitabı", subtitle: "Yazgı ve işaretler" },
+    gizem: { title: "Gizem Kitabı", subtitle: "Kartların fısıltısı" },
     ay: { title: "Ay Kitabı", subtitle: "Gecenin bilgeliği" },
     golge: { title: "Gölge Kitabı", subtitle: "İçindeki karanlık" },
   } as Record<string, { title: string; subtitle: string }>,

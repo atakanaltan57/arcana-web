@@ -514,7 +514,95 @@ const shadow: Design = {
   },
 };
 
-const DESIGNS: Record<string, Design> = { ask: love, yol: path, kader: fate, ay: moon, golge: shadow };
+function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function almond(ctx: CanvasRenderingContext2D, cx: number, cy: number, halfWidth: number, halfHeight: number) {
+  ctx.beginPath();
+  ctx.moveTo(cx - halfWidth, cy);
+  ctx.quadraticCurveTo(cx, cy - halfHeight * 2, cx + halfWidth, cy);
+  ctx.quadraticCurveTo(cx, cy + halfHeight * 2, cx - halfWidth, cy);
+  ctx.closePath();
+}
+
+const mystery: Design = {
+  borderStep: 28,
+  border: ({ ctx }, x, y, _inward, index) => {
+    if (index % 3 === 0) star(ctx, x, y, 7, 2.2, 4, 0);
+    else {
+      circle(ctx, x, y, 1.8);
+      ctx.fill();
+    }
+  },
+  corner: (tool) => {
+    cornerArc(tool, 150);
+    crescent(tool, 54, 54, 30, 12, Math.PI / 4);
+    const { ctx } = tool;
+    star(ctx, 112, 40, 11, 3, 4, 0);
+    star(ctx, 40, 112, 11, 3, 4, 0);
+  },
+  emblem: (tool, cx, cy, layout) => {
+    const { ctx } = tool;
+    const cardW = 330;
+    const cardH = 540;
+    const left = cx - cardW / 2;
+    const top = cy - cardH / 2;
+    tool.gold();
+    roundedRect(ctx, left, top, cardW, cardH, 26);
+    ctx.fill();
+    tool.cut();
+    roundedRect(ctx, left + 12, top + 12, cardW - 24, cardH - 24, 18);
+    ctx.fill();
+    tool.gold();
+    ctx.lineWidth = 2.5;
+    roundedRect(ctx, left + 24, top + 24, cardW - 48, cardH - 48, 12);
+    ctx.stroke();
+
+    for (let i = 0; i < 13; i++) {
+      const a = Math.PI + (i / 12) * Math.PI;
+      const inner = 92;
+      const outer = i % 2 === 0 ? 170 : 138;
+      ctx.lineWidth = i % 2 === 0 ? 5 : 2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * inner, cy - 20 + Math.sin(a) * inner);
+      ctx.lineTo(cx + Math.cos(a) * outer, cy - 20 + Math.sin(a) * outer);
+      ctx.stroke();
+    }
+
+    tool.gold();
+    almond(ctx, cx, cy, 120, 58);
+    ctx.fill();
+    tool.cut();
+    almond(ctx, cx, cy, 106, 48);
+    ctx.fill();
+    tool.gold();
+    ring(tool, cx, cy, 52, 44);
+    setGem(tool, cx, cy, layout, 40);
+
+    for (const direction of [-1, 1]) {
+      crescent(tool, cx + direction * 250, cy, 44, 16, direction > 0 ? 0 : Math.PI);
+      star(ctx, cx, cy + direction * 196, 24, 6, 4, 0);
+      star(ctx, cx - 70, cy + direction * 206, 8, 2.5, 4, 0);
+      star(ctx, cx + 70, cy + direction * 206, 8, 2.5, 4, 0);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + direction * 322);
+      ctx.lineTo(cx + 14, cy + direction * 350);
+      ctx.lineTo(cx, cy + direction * 366);
+      ctx.lineTo(cx - 14, cy + direction * 350);
+      ctx.closePath();
+      ctx.fill();
+    }
+  },
+};
+
+const DESIGNS: Record<string, Design> = { ask: love, yol: path, kader: fate, gizem: mystery, ay: moon, golge: shadow };
 
 export function hasThemedDesign(id: string) {
   return id in DESIGNS;

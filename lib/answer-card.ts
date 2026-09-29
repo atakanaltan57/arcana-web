@@ -1,5 +1,7 @@
 import { BRAND_NAME_UPPER, siteUrl } from "@/lib/brand";
 import { getMessages } from "@/lib/i18n/locale-store";
+import type { PickedAnswer } from "@/lib/answers/pick-answer";
+import { tarotCardFor, tarotLabel } from "@/lib/tarot";
 import { traceBrandSymbol } from "@/lib/textures/brand-symbol";
 import {
   balanceLines,
@@ -21,7 +23,33 @@ type AnswerCardInput = {
   question: string;
   bookTitle: string;
   golden: boolean;
+  card?: { image: string; label: string } | null;
 };
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Card image failed to load: ${src}`));
+    image.src = src;
+  });
+}
+
+function drawTarotImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, top: number, height: number) {
+  const width = height * (image.width / image.height);
+  const x = (CARD_WIDTH - width) / 2;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.7)";
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 16;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(x, top, width, height);
+  ctx.restore();
+  ctx.drawImage(image, x, top, width, height);
+  ctx.strokeStyle = "rgba(236,208,138,0.85)";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x - 12, top - 12, width + 24, height + 24);
+}
 
 type Fit = { size: number; lines: string[] };
 
@@ -141,10 +169,10 @@ function drawGoldenBadge(ctx: CanvasRenderingContext2D, y: number, sans: string,
   fillSpacedText(ctx, label, CARD_WIDTH / 2, y + 1, spacing);
 }
 
-export async function createAnswerCard({ answer, question, bookTitle, golden }: AnswerCardInput): Promise<Blob> {
+export async function createAnswerCard({ answer, question, bookTitle, golden, card = null }: AnswerCardInput): Promise<Blob> {
   const family = getSerifFamily();
   const sans = getSansFamily();
-  await ensureFonts(family, sans);
+  const [, cardImage] = await Promise.all([ensureFonts(family, sans), card ? loadImage(card.image) : Promise.resolve(null)]);
   const canvas = document.createElement("canvas");
   canvas.width = CARD_WIDTH;
   canvas.height = CARD_HEIGHT;
@@ -175,17 +203,26 @@ export async function createAnswerCard({ answer, question, bookTitle, golden }: 
     headerBottom = SAFE_TOP + 340;
   }
 
-  const answerFit = fitLines(ctx, answer, (size) => `italic 500 ${size}px ${family}`, 124, 64, 4);
+  const answerFit = cardImage
+    ? fitLines(ctx, answer, (size) => `italic 500 ${size}px ${family}`, 64, 44, 3)
+    : fitLines(ctx, answer, (size) => `italic 500 ${size}px ${family}`, 124, 64, 4);
   const answerLineHeight = answerFit.size * 1.18;
   const answerHeight = answerFit.lines.length * answerLineHeight;
-  const questionFit = question ? fitLines(ctx, `“${question}”`, (size) => `italic 500 ${size}px ${family}`, 58, 42, 3) : null;
+  const questionFit = question
+    ? fitLines(ctx, `“${question}”`, (size) => `italic 500 ${size}px ${family}`, cardImage ? 46 : 58, cardImage ? 36 : 42, cardImage ? 2 : 3)
+    : null;
   const questionLineHeight = questionFit ? questionFit.size * 1.25 : 0;
-  const questionHeight = questionFit ? questionFit.lines.length * questionLineHeight + 100 : 0;
+  const questionHeight = questionFit ? questionFit.lines.length * questionLineHeight + (cardImage ? 50 : 100) : 0;
   const pillSpace = 170;
-
   const available = SAFE_BOTTOM - headerBottom;
-  const blockHeight = questionHeight + answerHeight + pillSpace;
-  const blockTop = headerBottom + Math.max(40, (available - blockHeight) / 2);
+  const labelSpace = cardImage ? 110 : 0;
+  const imageHeight = cardImage
+    ? Math.min(560, Math.max(360, available - 60 - questionHeight - answerHeight - pillSpace - labelSpace))
+    : 0;
+  const imageSpace = cardImage ? imageHeight + 40 : 0;
+
+  const blockHeight = questionHeight + imageSpace + labelSpace + answerHeight + pillSpace;
+  const blockTop = headerBottom + Math.max(cardImage ? 24 : 40, (available - blockHeight) / 2);
 
   if (questionFit) {
     ctx.fillStyle = "rgba(239,227,200,0.92)";
@@ -193,10 +230,18 @@ export async function createAnswerCard({ answer, question, bookTitle, golden }: 
     questionFit.lines.forEach((line, index) => {
       ctx.fillText(line, CARD_WIDTH / 2, blockTop + questionLineHeight * (index + 0.5));
     });
-    drawDivider(ctx, blockTop + questionFit.lines.length * questionLineHeight + 50);
+    if (!cardImage) drawDivider(ctx, blockTop + questionFit.lines.length * questionLineHeight + 50);
   }
 
-  const answerTop = blockTop + questionHeight;
+  if (cardImage && card) {
+    const imageTop = blockTop + questionHeight + 12;
+    drawTarotImage(ctx, cardImage, imageTop, imageHeight);
+    ctx.fillStyle = "#ecd08a";
+    ctx.font = `600 40px ${family}`;
+    fillSpacedText(ctx, card.label, CARD_WIDTH / 2, imageTop + imageHeight + 72, 6);
+  }
+
+  const answerTop = blockTop + questionHeight + imageSpace + labelSpace;
   if (golden) {
     const shine = ctx.createLinearGradient(0, answerTop, 0, answerTop + answerHeight);
     shine.addColorStop(0, "#fff3cc");
@@ -222,10 +267,21 @@ export async function createAnswerCard({ answer, question, bookTitle, golden }: 
   ctx.font = `italic 500 32px ${family}`;
   ctx.fillText(messages.tagline, CARD_WIDTH / 2, SAFE_BOTTOM + 40);
 
-  return new Promise((resolve, reject) => {
+  return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
       else reject(new Error("Answer card could not be encoded"));
     }, "image/png");
+  });
+}
+
+export function createAnswerCardFor(answer: PickedAnswer) {
+  const tarot = tarotCardFor(answer.bookId, answer.index);
+  return createAnswerCard({
+    answer: answer.text,
+    question: answer.question,
+    bookTitle: answer.bookTitle,
+    golden: answer.golden,
+    card: tarot ? { image: tarot.shareImage, label: tarotLabel(tarot, answer.locale) } : null,
   });
 }

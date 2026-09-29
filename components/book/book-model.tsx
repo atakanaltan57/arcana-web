@@ -17,7 +17,9 @@ import {
   createPrintedPageTexture,
   PRINTED_DROP_CAP,
   PRINTED_LAYOUT,
+  tarotFrameUv,
 } from "@/lib/textures/page-textures";
+import { tarotCardFor } from "@/lib/tarot";
 import {
   CHARGE_SECONDS,
   CLOSING_SECONDS,
@@ -303,6 +305,7 @@ export function BookModel({ theme }: BookModelProps) {
       flips,
       geometries: { coverGeometry, pagesGeometry, rightPageGeometry, leftPageGeometry, flipGeometry, spineGeometry },
       dispose: () => {
+        if (rightPage.uniforms.uHasImage.value > 0.5) rightPage.uniforms.uImage.value.dispose();
         [paper, paperLeft, paperNormal, edge, blank, ...printed].forEach((texture) => texture.dispose());
         [edgeMaterial, hiddenPaper, underPage, rightPage.material, leftPage.material].forEach(
           (material) => material.dispose(),
@@ -337,8 +340,26 @@ export function BookModel({ theme }: BookModelProps) {
     };
   }, [assets, locale]);
 
+  const setAnswerImage = (image: THREE.Texture | null) => {
+    const uniforms = assets.rightPage.uniforms;
+    const previous = uniforms.uHasImage.value > 0.5 ? uniforms.uImage.value : null;
+    if (image) {
+      uniforms.uImage.value = image;
+      uniforms.uImageRect.value.copy(tarotFrameUv());
+      uniforms.uHasImage.value = 1;
+    } else {
+      uniforms.uImage.value = assets.blankText;
+      uniforms.uHasImage.value = 0;
+    }
+    if (previous && previous !== image) previous.dispose();
+  };
+
   const loadAnswer = (answer: PickedAnswer) => {
-    createAnswerTexture(answer.text, answer.page, answer.bookTitle, answer.question, answer.golden)
+    const card = tarotCardFor(answer.bookId, answer.index);
+    const locale = answer.locale === "en" ? "en" : "tr";
+    const label = card ? { numeral: card.numeral, name: card.name[locale].toLocaleUpperCase(locale) } : null;
+    setAnswerImage(null);
+    createAnswerTexture(answer.text, answer.page, answer.bookTitle, answer.question, answer.golden, label)
       .then((texture) => {
         if (lastAnswer.current !== answer) {
           texture.dispose();
@@ -349,6 +370,19 @@ export function BookModel({ theme }: BookModelProps) {
         if (previous instanceof THREE.CanvasTexture) previous.dispose();
       })
       .catch((error: unknown) => console.error("Answer texture failed", error));
+    if (!card) return;
+    new THREE.TextureLoader()
+      .loadAsync(card.image)
+      .then((image) => {
+        if (lastAnswer.current !== answer) {
+          image.dispose();
+          return;
+        }
+        image.colorSpace = THREE.SRGBColorSpace;
+        image.anisotropy = 4;
+        setAnswerImage(image);
+      })
+      .catch((error: unknown) => console.error("Tarot card image failed", error));
   };
 
   const setFlip = (uniforms: FlipPageUniforms, group: THREE.Group | null, progress: number) => {

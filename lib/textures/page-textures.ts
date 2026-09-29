@@ -263,7 +263,80 @@ function drawFleuron(ctx: CanvasRenderingContext2D, cx: number, cy: number, scal
   ctx.restore();
 }
 
-export async function createAnswerTexture(answer: string, pageNumber: number, bookTitle: string, question = "", golden = false) {
+export const TAROT_FRAME = { x: 367, y: 268, width: 290, height: 500 };
+
+export type TarotLabel = { numeral: string; name: string };
+
+export function tarotFrameUv() {
+  const { x, y, width, height } = TAROT_FRAME;
+  return new THREE.Vector4(
+    x / PAGE_TEXTURE_WIDTH,
+    1 - (y + height) / PAGE_TEXTURE_HEIGHT,
+    (x + width) / PAGE_TEXTURE_WIDTH,
+    1 - y / PAGE_TEXTURE_HEIGHT,
+  );
+}
+
+function drawFooter(ctx: CanvasRenderingContext2D, family: string, w: number, h: number, label: string, pageNumber: number) {
+  ctx.fillStyle = "rgba(255,0,0,0.7)";
+  ctx.font = `italic 500 40px ${family}`;
+  ctx.fillText(`— ${label} · ${toRoman(pageNumber)} —`, w / 2, h - 96);
+}
+
+function drawTarotAnswer(ctx: CanvasRenderingContext2D, family: string, w: number, answer: string, question: string, card: TarotLabel) {
+  ctx.fillStyle = RUBRIC;
+  ctx.font = `600 40px ${family}`;
+  fillSpacedText(ctx, BRAND_NAME_UPPER, w / 2, 116, 16);
+
+  if (question) {
+    ctx.font = `italic 600 38px ${family}`;
+    const questionLines = wrapText(ctx, `“${question}”`, 780).slice(0, 2);
+    const firstY = questionLines.length > 1 ? 172 : 192;
+    questionLines.forEach((line, index) => ctx.fillText(line, w / 2, firstY + index * 42));
+  }
+
+  const { x, y, width, height } = TAROT_FRAME;
+  ctx.strokeStyle = GOLD;
+  ctx.lineWidth = 6;
+  ctx.strokeRect(x - 14, y - 14, width + 28, height + 28);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - 26, y - 26, width + 52, height + 52);
+  ctx.fillStyle = GOLD;
+  for (const [cx, cy] of [[x - 20, y - 20], [x + width + 20, y - 20], [x - 20, y + height + 20], [x + width + 20, y + height + 20]]) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-9, -9, 18, 18);
+    ctx.restore();
+  }
+
+  const nameY = 1214;
+  ctx.fillStyle = RUBRIC;
+  ctx.font = `600 44px ${family}`;
+  fillSpacedText(ctx, `${card.numeral} · ${card.name}`, w / 2, nameY, 6);
+
+  let size = 46;
+  let lines: string[] = [];
+  do {
+    ctx.font = `italic 500 ${size}px ${family}`;
+    lines = balanceLines(ctx, keepDashWithNextWord(answer), 820);
+    size -= 2;
+  } while (lines.length > 2 && size > 32);
+  size += 2;
+  const lineHeight = size * 1.12;
+  ctx.fillStyle = INK;
+  ctx.font = `italic 500 ${size}px ${family}`;
+  lines.slice(0, 2).forEach((line, index) => ctx.fillText(line, w / 2, nameY + 60 + lineHeight * index));
+}
+
+export async function createAnswerTexture(
+  answer: string,
+  pageNumber: number,
+  bookTitle: string,
+  question = "",
+  golden = false,
+  card: TarotLabel | null = null,
+) {
   const family = getSerifFamily();
   await ensureFonts(family);
   const w = PAGE_TEXTURE_WIDTH;
@@ -309,6 +382,11 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
     ctx.restore();
   }
 
+  if (card) {
+    drawTarotAnswer(ctx, family, w, answer, question, card);
+    return canvasToTexture(canvas, false);
+  }
+
   ctx.fillStyle = GOLD;
   ctx.strokeStyle = GOLD;
   drawGlyphRow(ctx, CIPHER_CRIB_TOKENS, w / 2, 166, 22, decorRand);
@@ -316,6 +394,8 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
   ctx.fillStyle = RUBRIC;
   ctx.font = `600 40px ${family}`;
   fillSpacedText(ctx, BRAND_NAME_UPPER, w / 2, 116, 16);
+
+  const footerLabel = golden ? getMessages().golden.label : bookTitle;
 
   let size = 100;
   let lines: string[] = [];
@@ -374,10 +454,7 @@ export async function createAnswerTexture(answer: string, pageNumber: number, bo
   ctx.arc(w / 2, top + blockHeight + 70, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "rgba(255,0,0,0.7)";
-  ctx.font = `italic 500 40px ${family}`;
-  const footer = golden ? getMessages().golden.label : bookTitle;
-  ctx.fillText(`— ${footer} · ${toRoman(pageNumber)} —`, w / 2, h - 96);
+  drawFooter(ctx, family, w, h, footerLabel, pageNumber);
 
   return canvasToTexture(canvas, false);
 }
